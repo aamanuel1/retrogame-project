@@ -14,25 +14,35 @@ CHROUT = $ffd2
 nextstmt
 	dc.w 0
 
-;PROGRAM START
-helloworld
-	dc.b "a",255
-	lda >helloworld
+;PROGRAM START	
+	lda #>helloworld
 	sta $21
-	lda <helloworld
+	lda #<helloworld
 	sta $20
-
-	ldy #0
-	
-printstring
-	lda ($20),y
-	cmp 255
-	beq end
-	jsr CHROUT
-	iny
-	jmp printstring
-
-end:
+	jsr printstring
 	rts
 
+printstring
+	ldy #0
+printstring_loop
+	lda ($20),y
+	cmp #255
+	beq printstring_end
+	jsr printchar
+	iny
+	jmp printstring_loop
+
+printstring_end
+	rts
+
+printchar
+	cmp #96
+	bcc printchar_ok
+	and #%11011111
+printchar_ok
+	jsr CHROUT
+	rts
+
+helloworld
+	dc.b "Hello world",255
 
