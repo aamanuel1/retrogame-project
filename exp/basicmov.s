@@ -39,6 +39,11 @@ clearscreen_loop:
 	sta ($01),Y
 	iny				;Loop until we loop back to 0
 	bne clearscreen_loop
+	lda $02
+	cmp #$1f
+	beq main
+	inc $02
+	jmp clearscreen_loop	
 
 main:	
 	lda #$00			;load low-byte base address for screen and colour memory
@@ -63,7 +68,17 @@ main_loop:
 	jsr delay
 	ldy $04
 	bne main_loop
-	jmp clearscreen
+	lda $ff
+	cmp #$97
+	beq clearscreen
+	
+	dey
+	lda #32
+	sta ($01),Y
+	iny
+	inc $02
+	inc $ff
+	jmp main_loop
 
 delay:
 	ldx #$ff	
