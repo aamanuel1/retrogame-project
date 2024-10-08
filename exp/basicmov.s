@@ -1,4 +1,4 @@
-;basicmov.s Shows basic movement on a blank board.
+;scrollingball.s A red ball zips across and down the screen to no end or reason.
 
 	processor 6502
 
@@ -59,32 +59,32 @@ main_loop:
 	lda #32				;Load with space to clear previous screen
 	sta ($01),Y
 	iny				;Go forward one to replace blank with non-blank
-	lda #2
-	sta ($fe),Y
-	lda #81
-	sta ($01),Y
-	iny
-	sty $04
-	jsr delay
-	ldy $04
-	bne main_loop
-	lda $ff
-	cmp #$97
-	beq clearscreen
+	lda #2				;Load A with red
+	sta ($fe),Y			;Store red in the colour map
+	lda #81				;Load ball character code into A
+	sta ($01),Y			;Store red ball on screen map
+	iny				;Move to the right by 1
+	sty $04				;Store Y temporarily in zero page
+	jsr delay			;Call delay, Y will be lost.
+	ldy $04				;Reload the incrementor back to Y
+	bne main_loop			;Loop around until Y loops from $FF to $00
+	lda $ff				;Load high-byte base address to A for checking
+	cmp #$97			;Check if we're only halfway done.
+	beq clearscreen			;If we're fully done, go back to clearscreen
 	
-	dey
+	dey				;Otherwise erase the ball to the left
 	lda #32
 	sta ($01),Y
-	iny
-	inc $02
-	inc $ff
-	jmp main_loop
+	iny				;Go forward one
+	inc $02				;Increment high-byte screen addr base from $1E to $1F
+	inc $ff				;Increment high-byte colour addr base from $96 to $97
+	jmp main_loop			;Keep drawing balls.
 
 delay:
-	ldx #$ff	
+	ldx #$ff			;Delay 255 times
 delay_loop:
-	nop
-	nop
+	nop				;NOP is 2 clock cycles, 12 nops, 2 * 255 = 510 clock cycles
+	nop				;12 nops is about right for this animation to work...
 	nop
 	nop
 	nop
@@ -96,7 +96,7 @@ delay_loop:
 	nop
 	nop
 	dex
-	bne delay_loop
+	bne delay_loop			;Done delaying 255 times, go back.
 	rts
 
 videosettings:
