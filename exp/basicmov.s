@@ -41,19 +41,48 @@ clearscreen_loop:
 	bne clearscreen_loop
 
 main:	
-	lda #$f1
+	lda #$00			;load low-byte base address for screen and colour memory
 	sta $01
-	lda #$1e
+	sta $fe
+	lda #$1e			;Load high-byte base address for screen memory
 	sta $02
-	ldy #1
-	lda #1
+	lda #$96			;Load high-byte base address for colour memory
+	sta $ff
+	ldy #$0				;Set increment to 0
+main_loop:
+	dey				;Go back one
+	lda #32				;Load with space to clear previous screen
+	sta ($01),Y
+	iny				;Go forward one to replace blank with non-blank
+	lda #2
+	sta ($fe),Y
+	lda #81
 	sta ($01),Y
 	iny
-	lda #19
-	sta ($01),Y
-	iny
-	sta ($01),Y
-	rts  
+	sty $04
+	jsr delay
+	ldy $04
+	bne main_loop
+	jmp clearscreen
+
+delay:
+	ldx #$ff	
+delay_loop:
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	dex
+	bne delay_loop
+	rts
 
 videosettings:
 	dc.b %00001100			;9000 $05 Interlace off, screen origin horiz 12  (def 5, lower value left
@@ -72,4 +101,4 @@ videosettings:
 	dc.b %0				;900C $0 Soprano oscillator
 	dc.b %0				;900D $0 Noise source
 	dc.b %0				;900E $0 Bit 4-7 auxilary colour, bit 0-3 sound loudness
-	dc.b %00011011			;900F 
+	dc.b %00001110			;900F 
