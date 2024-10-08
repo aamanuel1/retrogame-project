@@ -29,18 +29,23 @@ init_loop:
 	bne init_loop
 
 clearscreen:
-	lda #$0
+	lda #$00			;Load low byte of address
 	sta $01
-	lda #$1e
+	lda #$1e			;Load high byte of address
 	sta $02
-	ldy #$ff
+	ldy #$0				;Counter = 0
 clearscreen_loop:
-	lda #$20
+	lda #$20			;Load with space (32 dec)
 	sta ($01),Y
-	dey
+	iny				;Loop until we loop back to 0
 	bne clearscreen_loop
 
 main:	
+	lda #$f1
+	sta $01
+	lda #$1e
+	sta $02
+	ldy #1
 	lda #1
 	sta ($01),Y
 	iny
@@ -52,8 +57,8 @@ main:
 
 videosettings:
 	dc.b %00001100			;9000 $05 Interlace off, screen origin horiz 12  (def 5, lower value left
-	dc.b %00011001			;9001 $19 Screen origin vertical 5, lower value up by 2pix to 1
-	dc.b %10010110			;9002 $96 bit 7 Screen mem location, rest columns (default 22 max 27)
+	dc.b %00011110			;9001 $19 Screen origin vertical 5, lower value up by 2pix to 1
+	dc.b %10010110			;9002 $96 bit 7 Screen mem location, rest columns (current default 22 max 27)
 	dc.b %10101110			;9003 $AE bit 7 is screen raster, bit 6-1  rows (default 23 max 23)
 					;bit 0 is character size 0 8x8 chars, 1 8x16 chars
 	dc.b %01111010			;9004 $7A 122 TV raster beam line
