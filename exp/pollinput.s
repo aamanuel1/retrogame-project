@@ -1,5 +1,6 @@
 
-;pollinput.s Change screen colour when you press an arrow key.
+;pollinput.s Change screen colour when you press WASD
+;Note: Using GETIN, and SCNKEY are too slow, tap current key location in zero page instead
 
 	processor 6502
 
@@ -8,6 +9,7 @@
 CHROUT = $ffd2
 GETIN = $ffe4
 SCNKEY = $ff9f
+CURKEY = $c5
 
 ;VIC CHIP
 BRDR_SCR_COLOUR = $900f
@@ -44,38 +46,36 @@ clearscreen_loop:
 	lda #$20			;Load with space (32 dec)
 	sta ($01),Y
 	iny				;Loop until we loop back to 0
-	bne clearscreen_loop
+	bne clearscreen_loop		
 	lda $02
-	cmp #$1f
+	cmp #$1f			;If we're only halfway done ($1e) then
 	beq main
-	inc $02
+	inc $02				;Increment 1e to 1f then continue
 	jmp clearscreen_loop	
 
 main:		
-	;jsr SCNKEY
-	jsr GETIN
-	cmp #0
-	;lda #%00011110
-	;sta $900e
-	beq no_move
-	cmp #87
-	beq move_up
-	cmp #65
+	lda CURKEY			;CURKEY is $c5 in zero page
+	cmp #$40			;$40 is 64 dec, see pg 179 of VIC20 ref
+	beq no_move			;64 is no button pressed
+	cmp #$09			;$09 is 9 dec, W button
+	beq move_up			
+	cmp #$11			;$11 is 17 dec, A button
 	beq move_left
-	cmp #83
+	cmp #$29			;$29 is 41 dec, S button
 	beq move_down
-	cmp #68
+	cmp #$12			;$12 is 18 dec, D button
 	beq move_right
-	
-	jmp main
+	cmp #$0F			;$0F is 15 dec, return button
+	beq shoot
+	jmp main			;End of "game" loop
 
 no_move:
-	lda BRDR_SCR_COLOUR
-	and #%00001111
-	ora #%00000000
-	;lda #%00001110
-	sta BRDR_SCR_COLOUR	
-	jmp main
+	lda BRDR_SCR_COLOUR		;Border screen colour is $900f
+	and #%00001111			;AND the existing to turn off bits
+	ora #%00000000			;OR the result with 1 in the bits you want on
+	;lda #%00001110			;or just load A with the bitmask you want.
+	sta BRDR_SCR_COLOUR		;and forget the rest.	
+	jmp main			;Similar code for rest.
 	
 move_left:
 	lda BRDR_SCR_COLOUR
@@ -110,25 +110,11 @@ move_down:
 	jmp main
 
 shoot:
-
-delay:
-	ldx #$ff			;Delay 255 times
-delay_loop:
-	nop				;NOP is 2 clock cycles, 12 nops, 2 * 255 = 510 clock cycles
-	nop				;12 nops is about right for this animation to work...
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	dex
-	bne delay_loop			;Done delaying 255 times, go back.
-	rts
+	lda BRDR_SCR_COLOUR
+	and #%11111111
+	ora #%11110000
+	sta BRDR_SCR_COLOUR
+	jmp main
 
 videosettings:
 	dc.b %00001100			;9000 $05 Interlace off, screen origin horiz 12  (def 5, lower value left
