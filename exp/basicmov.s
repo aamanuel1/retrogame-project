@@ -12,6 +12,8 @@ SCRMEM = $1e00
 COLMEM = $9600
 PLRSTRT = $1ee6
 PLRCOLR = $96e6
+PLRX = $07
+PLRY = $08
 
 ;VIC CHIP
 BRDR_SCR_COLOUR = $900f
@@ -61,6 +63,10 @@ main:
 	sta $01
 	lda #>PLRSTRT
 	sta $02
+	lda #10
+	sta PLRX
+	lda #10
+	sta PLRY
 	lda #<PLRCOLR
 	sta $05
 	lda #>PLRCOLR
@@ -109,17 +115,19 @@ move_left:
 	sec
 	sbc #1
 	sta $05
-	bcs draw_left
+	bcs check_left
 	lda $02
 	cmp #$1E
-	beq draw_left
+	beq check_left
 	dec $02
 	dec $06
 check_left:
+	dec PLRX
 	jsr global_collision
 	beq draw_left
 	inc $01
 	inc $05
+	inc PLRX
 	jmp draw_left
 draw_left:
 	lda #81
@@ -141,23 +149,26 @@ move_right:
 	clc
 	adc #1
 	sta $05
-	bcc draw_right
+	bcc check_right
 	lda $02
 	cmp #$1F
-	beq draw_right
+	beq check_right
 	inc $02
 	inc $06
 check_right:
+	inc PLRX
 	jsr global_collision
 	beq draw_right
 	dec $01
 	dec $05
+	dec PLRX
 	jmp draw_right
 draw_right:
 	lda #81
 	sta ($01,X)
 	lda #2
-	sta ($05,X)
+	sta ($05,X) 
+end_move_right:
 	jsr delay
 	jmp game_loop
 
@@ -172,13 +183,14 @@ move_up:
 	sec
 	sbc #22
 	sta $05
-	bcs draw_up
+	bcs check_up
 	lda $02
 	cmp #$1e
-	beq draw_up
+	beq check_up
 	dec $02
 	dec $06
 check_up:
+	dec PLRY
 	jsr global_collision
 	beq draw_up
 	lda $01
@@ -189,6 +201,7 @@ check_up:
 	clc
 	adc #22
 	sta $05
+	inc PLRY
 	jmp draw_up
 draw_up:
 	lda #81
@@ -211,13 +224,14 @@ move_down:
 	clc
 	adc #22
 	sta $05
-	bcc draw_down
+	bcc check_down
 	lda $02
 	cmp #$1f
-	beq draw_down
+	beq check_down
 	inc $02
 	inc $06
 check_down:
+	inc PLRY
 	jsr global_collision
 	beq draw_down
 	lda $01
@@ -228,6 +242,7 @@ check_down:
 	sec
 	sbc #22
 	sta $05
+	dec PLRY
 	jmp draw_down
 draw_down:
 	lda #81
@@ -246,17 +261,28 @@ shoot:
 	jmp main
 
 global_collision:
-	lda $02
-	sec
-	sbc #$1e
-	bcc collide
-	lda $02
-	cmp #$1f
+	lda PLRX
+	cmp #0
+	bmi collide
+	cmp #22
 	bpl collide
-	lda $01
-	cmp #$f9
+	lda PLRY
+	cmp #0
+	bmi collide
+	cmp #23
 	bpl collide
+;	lda $02
+;	sec
+;	sbc #$1e
+;	bcc collide
+;	lda $02
+;	cmp #$1f
+;	bpl collide
+;	lda $01
+;	cmp #$f9
+;	bpl collide
 	lda #0
+
 	jmp ret_global_collision
 collide:
 	lda #1
