@@ -58,9 +58,9 @@ main:
 	;Establish starting point
 	ldx #0
 	lda #<PLRSTRT
-	sta $03
+	sta $01
 	lda #>PLRSTRT
-	sta $04
+	sta $02
 	lda #<PLRCOLR
 	sta $05
 	lda #>PLRCOLR
@@ -68,7 +68,7 @@ main:
 	lda #2
 	sta ($05,X)
 	lda #81
-	sta ($03,X)
+	sta ($01,X)
 
 
 game_loop:		
@@ -76,35 +76,100 @@ game_loop:
 	cmp #$40			;$40 is 64 dec, see pg 179 of VIC20 ref
 	beq game_loop			;64 is no button pressed
 	cmp #$09			;$09 is 9 dec, W button
-	beq move_up			
+	bne poll_left 
+	jmp move_up
+poll_left:				
 	cmp #$11			;$11 is 17 dec, A button
-	beq move_left
+	bne poll_down
+	jmp move_left
+poll_down:	
 	cmp #$29			;$29 is 41 dec, S button
-	beq move_down
+	beq poll_right
+	jmp move_down
+poll_right:	
 	cmp #$12			;$12 is 18 dec, D button
-	beq move_right
+	beq poll_shoot
+	jmp move_right
+poll_shoot:
 	cmp #$0F			;$0F is 15 dec, return button
-	beq shoot
+	beq end_poll 
+	jmp shoot
+end_poll:
+	jsr delay
 	jmp game_loop			;End of "game" loop
 	
 move_left:
 	lda #32
-	sta $03
-	dec $03
-	dec $05
+	sta ($01,X)
+	lda $01
+	sec
+	sbc #1
+	sta $01
+	lda $05
+	sec
+	sbc #1
+	sta $05
+	bcs draw_left
+	lda $02
+	cmp #$1E
+	beq draw_left
+	dec $02
+	dec $06
+check_left:
+	jsr global_collision
+	beq draw_left
+	inc $01
+	inc $05
+	jmp draw_left
+draw_left:
 	lda #81
-	sta ($03,X)
+	sta ($01,X)
 	lda #2
 	sta ($05,X)
-	jmp main
+end_move_left:
+	jsr delay
+	jmp game_loop
 
 move_right:
 
 	jmp main
 
 move_up:
-
-	jmp main
+	lda #32
+	sta ($01,X)
+	lda $01
+	sec
+	sbc #22
+	sta $01
+	lda $05
+	sec
+	sbc #22
+	sta $05
+	bcs draw_up
+	lda $02
+	cmp #$1e
+	beq draw_up
+	dec $02
+	dec $06
+check_up:
+	jsr global_collision
+	beq draw_up
+	lda $01
+	clc
+	adc #22
+	lda $05
+	clc
+	adc #22
+	jmp draw_up
+draw_up:
+	lda #81
+	sta ($01,X)
+	lda #2
+	sta ($05,X)
+end_move_up:
+	jsr delay
+	jsr delay
+	jmp game_loop
 
 move_down:
 
@@ -117,7 +182,43 @@ shoot:
 	sta BRDR_SCR_COLOUR
 	jmp main
 
-collision:
+global_collision:
+	lda $02
+	sec
+	sbc #$1e
+	bcc collide
+	lda $02
+	cmp #$1f
+	bpl collide
+	lda $01
+	cmp #$f9
+	bpl collide
+	lda #0
+	jmp ret_global_collision
+collide:
+	lda #1
+	jmp ret_global_collision
+ret_global_collision:
+	rts
+
+delay:
+	ldx #$ff			;Delay 255 times
+delay_loop:
+	nop				;NOP is 2 clock cycles, 12 nops, 2 * 255 = 510 clock cycles
+	nop				;12 nops is about right for this animation to work...
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	dex
+	bne delay_loop			;Done delaying 255 times, go back.
+	rts
 
 videosettings:
 	dc.b %00001100			;9000 $05 Interlace off, screen origin horiz 12  (wef 5, lower value left
