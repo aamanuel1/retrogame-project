@@ -142,11 +142,14 @@ move_right:
 	adc #1
 	sta $05
 	bcc draw_right
+	lda $02
+	cmp #$1F
+	beq draw_right
 	inc $02
 	inc $06
 check_right:
 	jsr global_collision
-	beq draw_left
+	beq draw_right
 	dec $01
 	dec $05
 	jmp draw_right
