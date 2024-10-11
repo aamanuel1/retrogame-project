@@ -84,15 +84,15 @@ poll_left:
 	jmp move_left
 poll_down:	
 	cmp #$29			;$29 is 41 dec, S button
-	beq poll_right
+	bne poll_right
 	jmp move_down
 poll_right:	
 	cmp #$12			;$12 is 18 dec, D button
-	beq poll_shoot
+	bne poll_shoot
 	jmp move_right
 poll_shoot:
 	cmp #$0F			;$0F is 15 dec, return button
-	beq end_poll 
+	bne end_poll 
 	jmp shoot
 end_poll:
 	jsr delay
@@ -131,8 +131,32 @@ end_move_left:
 	jmp game_loop
 
 move_right:
-
-	jmp main
+	lda #32
+	sta ($01,X)
+	lda $01
+	clc
+	adc #1
+	sta $01
+	lda $05
+	clc
+	adc #1
+	sta $05
+	bcc draw_right
+	inc $02
+	inc $06
+check_right:
+	jsr global_collision
+	beq draw_left
+	dec $01
+	dec $05
+	jmp draw_right
+draw_right:
+	lda #81
+	sta ($01,X)
+	lda #2
+	sta ($05,X)
+	jsr delay
+	jmp game_loop
 
 move_up:
 	lda #32
@@ -157,9 +181,11 @@ check_up:
 	lda $01
 	clc
 	adc #22
+	sta $01
 	lda $05
 	clc
 	adc #22
+	sta $05
 	jmp draw_up
 draw_up:
 	lda #81
@@ -172,8 +198,42 @@ end_move_up:
 	jmp game_loop
 
 move_down:
-
-	jmp main
+	lda #32
+	sta ($01,X)
+	lda $01
+	clc
+	adc #22
+	sta $01
+	lda $05
+	clc
+	adc #22
+	sta $05
+	bcc draw_down
+	lda $02
+	cmp #$1f
+	beq draw_down
+	inc $02
+	inc $06
+check_down:
+	jsr global_collision
+	beq draw_down
+	lda $01
+	sec
+	sbc #22
+	sta $01
+	lda $05
+	sec
+	sbc #22
+	sta $05
+	jmp draw_down
+draw_down:
+	lda #81
+	sta ($01,X)
+	lda #2
+	sta ($05,X)
+end_move_down:
+	jsr delay
+	jmp game_loop
 
 shoot:
 	lda BRDR_SCR_COLOUR
