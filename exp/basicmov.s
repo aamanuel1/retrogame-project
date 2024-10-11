@@ -280,16 +280,6 @@ global_collision:
 	bmi collide			;X < 0 we collided with top edge
 	cmp #23
 	bpl collide			;X > 23 we collided with bottom edge
-;	lda $02				;Some old stuff might delete later.
-;	sec
-;	sbc #$1e
-;	bcc collide
-;	lda $02
-;	cmp #$1f
-;	bpl collide
-;	lda $01
-;	cmp #$f9
-;	bpl collide
 	lda #0				;Return false
 	jmp ret_global_collision
 collide:
