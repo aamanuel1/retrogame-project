@@ -136,6 +136,7 @@ draw_left:
 	sta ($05,X)
 end_move_left:
 	jsr delay			;Runs fast, need to figure that out.
+	jsr delay
 	jmp game_loop
 
 move_right:
@@ -169,6 +170,7 @@ draw_right:
 	lda #2
 	sta ($05,X) 
 end_move_right:
+	jsr delay
 	jsr delay
 	jmp game_loop
 
@@ -251,14 +253,21 @@ draw_down:
 	sta ($05,X)
 end_move_down:
 	jsr delay
+	jsr delay
 	jmp game_loop
 
 shoot:
 	lda BRDR_SCR_COLOUR		;Change the screen colour to yellow
-	and #%11111111
-	ora #%11110000
+	and #%11111111			;AND to switch off
+	ora #%11110000			;OR to switch on
 	sta BRDR_SCR_COLOUR
-	jmp main
+	jsr delay			;Delay to show the flash
+	jsr delay
+	lda BRDR_SCR_COLOUR		;Turn the screen colour back to black
+	and #%00001111			
+	ora #%00000000
+	sta BRDR_SCR_COLOUR
+	jmp game_loop
 
 global_collision:
 	lda PLRX			;Load player X position
