@@ -63,7 +63,17 @@ clearscreen_loop:
 	jmp clearscreen_loop	
 
 main:
-
+	lda #$0F
+	sta VOLUME
+	lda #255
+	sta LOW_SPEAKER
+	jsr delay
+	jsr delay
+	jsr delay
+	lda #0
+	sta LOW_SPEAKER
+	sta VOLUME
+	rts
 
 delay:
 	ldx #$ff			;Delay 255 times
