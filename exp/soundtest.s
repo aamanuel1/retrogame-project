@@ -1,5 +1,6 @@
 
-;soundtest.s Playing around with sound
+;soundtest.s Playing around with sound, cycles through possible values in 
+;low, mid, high speaker as well as the noise speaker.
 
 	processor 6502
 
@@ -15,6 +16,7 @@ PLRSTRT = $1ee6
 PLRCOLR = $96e6
 PLRX = $07
 PLRY = $08
+CLOCK = $a2
 
 ;VIC CHIP
 BRDR_SCR_COLOUR = $900f
@@ -22,7 +24,7 @@ VOLUME = $900e
 LOW_SPEAKER = $900a
 MID_SPEAKER = $900b
 HI_SPEAKER = $900c
-NOISE = $900e
+NOISE = $900d
 
 ;ORIGIN
 	org $1001
@@ -63,35 +65,65 @@ clearscreen_loop:
 	jmp clearscreen_loop	
 
 main:
-	lda #$0F
-	sta VOLUME
-	lda #255
+	lda #$0F			;Set volume to 15 (max)
+	sta VOLUME			;Store in $900e
+	lda #128			;load  0 lowest note
+low_loop:
+	sta LOW_SPEAKER			;Store in $900a
+	sta $03				;Store the note in zero page 03
+	lda #15				;Load a with 60 (1 second for jiffy clock)
+	jsr delay			;Delay will delay with value in accumulator
+	inc $03				;Increment by 1
+	lda $03
+	cmp 255				;Go through suite of notes
+	bne low_loop
+	lda #0				;Turn low speaker off
 	sta LOW_SPEAKER
+	lda #128
+mid_loop:
+	sta MID_SPEAKER			;Store in $900b
+	sta $03
+	lda #15
 	jsr delay
-	jsr delay
-	jsr delay
+	inc $03
+	lda $03
+	cmp 255
+	bne mid_loop
 	lda #0
-	sta LOW_SPEAKER
+	sta MID_SPEAKER
+	lda #128
+hi_loop:
+	sta HI_SPEAKER
+	sta $03
+	lda #15
+	jsr delay
+	inc $03
+	lda $03
+	cmp 255
+	bne hi_loop
+	lda #0
+	sta HI_SPEAKER
+	lda #128
+noise_loop:
+	sta NOISE
+	sta $03
+	lda #15
+	jsr delay
+	inc $03
+	lda $03
+	cmp 255
+	bne noise_loop
+	lda #0
+	sta NOISE
 	sta VOLUME
-	rts
+	rts				;Return control to OS
 
 delay:
-	ldx #$ff			;Delay 255 times
+	clc				;clear carry flag
+	adc CLOCK			;Add existing time with lowest 24-bit 3byte jiffy clock value
 delay_loop:
-	nop				;NOP is 2 clock cycles, 12 nops, 2 * 255 = 510 clock cycles
-	nop				;12 nops is about right for this animation to work...
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	dex
-	bne delay_loop			;Done delaying 255 times, go back.
+	cmp CLOCK			;Compare A + clock with clock not equal then we haven't finished yet
+	bne delay_loop			
 	rts
 
 videosettings:
@@ -111,4 +143,4 @@ videosettings:
 	dc.b %0				;900C $0 Soprano oscillator
 	dc.b %0				;900D $0 Noise source
 	dc.b %0				;900E $0 Bit 4-7 auxilary colour, bit 0-3 sound loudness
-	dc.b %00001110			;900F 
+	dc.b %00011011			;900F 
