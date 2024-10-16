@@ -64,7 +64,36 @@ clearscreen_loop:
 	jmp clearscreen_loop	
 
 main:
-	rts
+	lda #$0F			;200 POKE V,15
+	sta VOLUME
+main_loop:
+	jsr SCNKEY			;220 GET A$...
+	jsr GETIN
+check_digit:
+	cmp #0				;...IF A$="" then 220
+	beq main_loop			
+	cmp #49				;240 IF N=0
+	bmi ending_module
+	cmp #57				;OR N=9 THEN 300
+	bpl ending_module
+get_key:
+	sec				;230 N=VAL(A$)
+	sbc #49
+play_keyboard:
+	tay				;Transfer N to Y for absolute indexing
+	lda #0				;250 POKE S2,0
+	sta MID_SPEAKER
+	lda #25				;260 FOR T=1 TO 25: NEXT T
+	jsr delay
+	lda b_major_scale,Y		;270 POKE S2,A(N)
+	sta MID_SPEAKER
+	jmp main_loop			;280 GOTO 220
+
+ending_module:				;300 REM ENDING MODULE
+	lda #0				;310 POKE S20,0
+	sta MID_SPEAKER
+	sta VOLUME
+	rts				;Return control to OS.
 
 delay:
 	clc				;clear carry flag
@@ -73,6 +102,16 @@ delay_loop:
 	cmp CLOCK			;Compare A + clock with clock not equal then we haven't finished yet
 	bne delay_loop			
 	rts
+
+b_major_scale:
+	dc.b 223			;B (offset 0)
+	dc.b 227			;D
+	dc.b 230			;D#
+	dc.b 231			;E
+	dc.b 234			;G
+	dc.b 236			;G#
+	dc.b 238			;A#
+	dc.b 239			;B
 
 videosettings:
 	dc.b %00001100			;9000 $05 Interlace off, screen origin horiz 12  (wef 5, lower value left
