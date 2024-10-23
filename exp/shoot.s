@@ -1,5 +1,5 @@
 
-;basicmovnshoot.s Enhance basicmov.s with shooting mechanic.
+;shoot.s Enhance basicmov.s with shooting mechanic.
 
 	processor 6502
 
@@ -15,6 +15,7 @@ PLRSTRT = $1ee6
 PLRCOLR = $96e6
 PLRX = $07
 PLRY = $08
+CLOCK = $a2
 
 ;VIC CHIP
 BRDR_SCR_COLOUR = $900f
@@ -102,6 +103,7 @@ poll_shoot:
 	bne end_poll 
 	jmp shoot
 end_poll:
+	lda #60 
 	jsr delay
 	jmp game_loop			;End of "game" loop
 	
@@ -136,7 +138,7 @@ draw_left:
 	lda #2				;That is red.
 	sta ($05,X)
 end_move_left:
-	jsr delay			;Runs fast, need to figure that out.
+	lda #10
 	jsr delay
 	jmp game_loop
 
@@ -171,7 +173,7 @@ draw_right:
 	lda #2
 	sta ($05,X) 
 end_move_right:
-	jsr delay
+	lda #10
 	jsr delay
 	jmp game_loop
 
@@ -212,7 +214,7 @@ draw_up:
 	lda #2
 	sta ($05,X)
 end_move_up:
-	jsr delay			;Delay to make it less fast
+	lda #10
 	jsr delay
 	jmp game_loop
 
@@ -253,7 +255,7 @@ draw_down:
 	lda #2
 	sta ($05,X)
 end_move_down:
-	jsr delay
+	lda #10
 	jsr delay
 	jmp game_loop
 
@@ -262,8 +264,8 @@ shoot:
 	and #%11111111			;AND to switch off
 	ora #%11110000			;OR to switch on
 	sta BRDR_SCR_COLOUR
+	lda #10
 	jsr delay			;Delay to show the flash
-	jsr delay
 	lda BRDR_SCR_COLOUR		;Turn the screen colour back to black
 	and #%00001111			
 	ora #%00000000
@@ -290,22 +292,11 @@ ret_global_collision:
 	rts				;Return result.
 
 delay:
-	ldx #$ff			;Delay 255 times
+	clc				;Clear carry
+	adc CLOCK			;A = A + CLOCK
 delay_loop:
-	nop				;NOP is 2 clock cycles, 12 nops, 2 * 255 = 510 clock cycles
-	nop				;12 nops is about right for this animation to work...
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	dex
-	bne delay_loop			;Done delaying 255 times, go back.
+	cmp CLOCK			
+	bne delay_loop			;if clock != clock + A keep going
 	rts
 
 videosettings:
