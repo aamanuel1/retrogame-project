@@ -16,6 +16,7 @@ PLRCOLR = $96e6
 PLRX = $07
 PLRY = $08
 CLOCK = $a2
+PREVDIR = $09
 
 ;VIC CHIP
 BRDR_SCR_COLOUR = $900f
@@ -83,9 +84,14 @@ game_loop:
 	lda CURKEY			;CURKEY is $c5 in zero page
 	cmp #$40			;$40 is 64 dec, see pg 179 of VIC20 ref
 	beq game_loop			;64 is no button pressed
+poll_shoot:
+	cmp #$0F			;$0F is 15 dec, return button
+	bne poll_up 
+	jmp shoot
+poll_up:
 	cmp #$09			;$09 is 9 dec, W button
-	bne poll_left 
-	jmp move_up
+	bne poll_left
+ 	jmp move_up
 poll_left:				
 	cmp #$11			;$11 is 17 dec, A button
 	bne poll_down
@@ -96,18 +102,15 @@ poll_down:
 	jmp move_down
 poll_right:	
 	cmp #$12			;$12 is 18 dec, D button
-	bne poll_shoot
+	bne end_poll
 	jmp move_right
-poll_shoot:
-	cmp #$0F			;$0F is 15 dec, return button
-	bne end_poll 
-	jmp shoot
 end_poll:
 	lda #60 
 	jsr delay
 	jmp game_loop			;End of "game" loop
 	
 move_left:
+	jsr store_direction
 	lda #32				;Clear current location with SPACE
 	sta ($01,X)
 	lda $01				;Load current location for operations
@@ -143,6 +146,7 @@ end_move_left:
 	jmp game_loop
 
 move_right:
+	jsr store_direction
 	lda #32				;Same as above but we're adding 1 to move right
 	sta ($01,X)
 	lda $01
@@ -178,6 +182,7 @@ end_move_right:
 	jmp game_loop
 
 move_up:
+	jsr store_direction
 	lda #32				;Same as above, but we're subtracting by 22 to move up
 	sta ($01,X)
 	lda $01				;Load low byte of current location
@@ -192,7 +197,7 @@ move_up:
 	lda $02
 	cmp #$1e			;The carry was clear (we rolled over) so check if it's already in 1e
 	beq check_up			;If it's in $1exx then keep going (maybe we don't need this)
-	dec $02				;Otherwise it's in $1f so bring it to $1e
+	dec $02				;Otherwise it's in $1f so bring it to $1e 
 	dec $06				;bring from $97 to $96
 check_up:
 	dec PLRY			;Decrement by 1
@@ -218,7 +223,8 @@ end_move_up:
 	jsr delay
 	jmp game_loop
 
-move_down:				;Same as above but add 22 to move down
+move_down:				;Same as above but add 22 to move downi
+	jsr store_direction
 	lda #32					
 	sta ($01,X)
 	lda $01
@@ -258,6 +264,10 @@ end_move_down:
 	lda #10
 	jsr delay
 	jmp game_loop
+
+store_direction:
+	sta PREVDIR
+	rts
 
 shoot:
 	lda BRDR_SCR_COLOUR		;Change the screen colour to yellow
