@@ -17,10 +17,19 @@ PLRX = $07
 PLRY = $08
 CLOCK = $a2
 PREVDIR = $09
+BULLET = $10
+BULLETDIR = $11
 
 ;VIC CHIP
 BRDR_SCR_COLOUR = $900f
 
+;OBJECTS TABLE
+	SEG.U objects
+	ORG $12
+
+bullets dc.b 16
+
+	SEG
 ;ORIGIN
 	org $1001
 
@@ -32,7 +41,6 @@ nextstmt
 	dc.w 0				;end of basic stub
 
 ;PROGRAM START
-	
 init:					;Initialize video settings on VIC chip
 	ldy #16				;Iterator
 init_loop:
@@ -79,7 +87,6 @@ main:
 	lda #81
 	sta ($01,X)
 
-
 game_loop:		
 	lda CURKEY			;CURKEY is $c5 in zero page
 	cmp #$40			;$40 is 64 dec, see pg 179 of VIC20 ref
@@ -87,7 +94,7 @@ game_loop:
 poll_shoot:
 	cmp #$0F			;$0F is 15 dec, return button
 	bne poll_up 
-	jmp shoot
+	jsr shoot
 poll_up:
 	cmp #$09			;$09 is 9 dec, W button
 	bne poll_left
@@ -270,17 +277,12 @@ store_direction:
 	rts
 
 shoot:
-	lda BRDR_SCR_COLOUR		;Change the screen colour to yellow
-	and #%11111111			;AND to switch off
-	ora #%11110000			;OR to switch on
-	sta BRDR_SCR_COLOUR
-	lda #10
-	jsr delay			;Delay to show the flash
-	lda BRDR_SCR_COLOUR		;Turn the screen colour back to black
-	and #%00001111			
-	ora #%00000000
-	sta BRDR_SCR_COLOUR
+	
 	jmp game_loop
+
+update_bullet:
+
+	rts
 
 global_collision:
 	lda PLRX			;Load player X position
@@ -327,3 +329,4 @@ videosettings:
 	dc.b %0				;900D $0 Noise source
 	dc.b %0				;900E $0 Bit 4-7 auxilary colour, bit 0-3 sound loudness
 	dc.b %00001110			;900F 
+
