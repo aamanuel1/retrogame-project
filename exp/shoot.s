@@ -119,7 +119,7 @@ poll_shoot:
 	bne end_poll 
 	jsr shoot
 end_poll:
-	lda #60 
+	lda #30 
 	jsr delay
 	jsr update_bullet
 	jmp game_loop			;End of "game" loop
@@ -134,9 +134,6 @@ shoot:
 	lda PREVDIR
 	sta bulletdir,X			;load current key from A before it's wiped
 	
-	lda #67				;Store circle "sprite"
-	sta bullets,X			;store the sprite in bullets list
-	
 	;get the player location
 	lda PLRX
 	sta bulletx,X
@@ -149,24 +146,60 @@ shoot:
 	lda $02
 	sta bullethigh,X
 
-shoot_left:
+	lda bulletdir,X
+	cmp #$09
+	beq shoot_up
+	cmp #$11
+	beq shoot_left
+	cmp #$29
+	beq shoot_down
+	cmp #$12
+	beq shoot_right	
+	jmp no_shoot
+
+shoot_left:	
+	lda #67				;Store circle "sprite"
+	sta bullets,X			;store the sprite in bullets list
+	
 	lda bulletlow,X
 	sec
 	sbc #1
+	jmp shoot_ret
+
+shoot_right:
+	lda #67
+	sta bullets,X
+
+	lda bulletlow,X
+	clc
+	adc #1
+	jmp shoot_ret
+
+shoot_up:
+	lda #93
+	sta bullets,X
+
+	lda bulletlow,X
+	sec
+	sbc #22
+	jmp shoot_ret
+
+shoot_down:
+	lda #93
+	sta bullets,X
+
+	lda bulletlow,X
+	clc
+	adc #22
+	jmp shoot_ret	
+
+shoot_ret:
 	sta bulletlow,X
 	lda bullets,X
 	sta (bulletlow,X)
-
-shoot_right:
-
-shoot_up:
-
-shoot_down:
-	
-	;draw the bullet one direction away from player
-shoot_ret:
 	inx				;Increment bullets
 	stx numbullet 			;Store bullet index
+no_shoot:
 	rts				;return
 
 update_bullet:
