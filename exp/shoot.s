@@ -203,6 +203,14 @@ no_shoot:
 	rts				;return
 
 update_bullet:
+	;in loop get bullet info
+
+	;perform collision test prediction
+
+	;update bullet
+
+	;draw bullet
+
 	rts
 
 global_collision:
