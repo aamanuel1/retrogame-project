@@ -17,8 +17,7 @@ PLRX = $07
 PLRY = $08
 CLOCK = $a2
 PREVDIR = $09
-BULLET = $10
-BULLETDIR = $11
+BULLETCOUNT = $10
 
 ;VIC CHIP
 BRDR_SCR_COLOUR = $900f
@@ -26,8 +25,13 @@ BRDR_SCR_COLOUR = $900f
 ;OBJECTS TABLE
 	SEG.U objects
 	ORG $12
-
-bullets dc.b 16
+numbullet ds 1
+bullets ds 8
+bulletdir ds 8
+bulletx ds 8
+bullety ds 8
+bulletlow ds 8
+bullethigh ds 8
 
 	SEG
 ;ORIGIN
@@ -68,6 +72,9 @@ clearscreen_loop:
 	jmp clearscreen_loop	
 
 main:
+	;Establish bullets number
+	lda #0
+	sta numbullet
 	;Establish starting point
 	ldx #0
 	lda #<PLRSTRT
@@ -88,200 +95,81 @@ main:
 	sta ($01,X)
 
 game_loop:		
+	ldx #0
 	lda CURKEY			;CURKEY is $c5 in zero page
 	cmp #$40			;$40 is 64 dec, see pg 179 of VIC20 ref
 	beq game_loop			;64 is no button pressed
-poll_shoot:
-	cmp #$0F			;$0F is 15 dec, return button
-	bne poll_up 
-	jsr shoot
-poll_up:
 	cmp #$09			;$09 is 9 dec, W button
-	bne poll_left
- 	jmp move_up
+	bne poll_left 
+	jmp turn
 poll_left:				
 	cmp #$11			;$11 is 17 dec, A button
 	bne poll_down
-	jmp move_left
+	jmp turn
 poll_down:	
 	cmp #$29			;$29 is 41 dec, S button
 	bne poll_right
-	jmp move_down
+	jmp turn
 poll_right:	
 	cmp #$12			;$12 is 18 dec, D button
-	bne end_poll
-	jmp move_right
+	bne poll_shoot
+	jmp turn
+poll_shoot:
+	cmp #$0F			;$0F is 15 dec, return button
+	bne end_poll 
+	jsr shoot
 end_poll:
 	lda #60 
 	jsr delay
+	jsr update_bullet
 	jmp game_loop			;End of "game" loop
-	
-move_left:
-	jsr store_direction
-	lda #32				;Clear current location with SPACE
-	sta ($01,X)
-	lda $01				;Load current location for operations
-	sec				;DON'T forget to set this.
-	sbc #1				;subtract 1 to move left
-	sta $01				;Store in low byte of screen map
-	lda $05				;Load current colour map location
-	sec
-	sbc #1				;Subtract by 1 to colour left tile
-	sta $05				;Store in low byte of screen map
-	bcs check_left			;Do a check of the location if didn't roll over
-	lda $02				;If we did roll over (carry clear)
-	cmp #$1E			;Do a check if we're in $1F
-	beq check_left			;If we're not then continue the ckeck
-	dec $02				;Otherwise, turn $1F to $1E
-	dec $06				;turn $97 to $96
-check_left:
-	dec PLRX			;decrement player X position
-	jsr global_collision		;Check if it's bumping against edge of map
-	beq draw_left			;If it's 0 then keep going
-	inc $01				;If it's 1 then reset everything.
-	inc $05
-	inc PLRX			;Reset the X counter
-	jmp draw_left			;Draw it not moving.
-draw_left:
-	lda #81				;Draw a circle...
-	sta ($01,X)
-	lda #2				;That is red.
-	sta ($05,X)
-end_move_left:
-	lda #10
-	jsr delay
-	jmp game_loop
 
-move_right:
-	jsr store_direction
-	lda #32				;Same as above but we're adding 1 to move right
-	sta ($01,X)
-	lda $01
-	clc
-	adc #1
-	sta $01
-	lda $05
-	clc
-	adc #1
-	sta $05
-	bcc check_right
-	lda $02
-	cmp #$1F
-	beq check_right
-	inc $02
-	inc $06
-check_right:
-	inc PLRX
-	jsr global_collision
-	beq draw_right
-	dec $01
-	dec $05
-	dec PLRX
-	jmp draw_right
-draw_right:
-	lda #81
-	sta ($01,X)
-	lda #2
-	sta ($05,X) 
-end_move_right:
-	lda #10
-	jsr delay
-	jmp game_loop
-
-move_up:
-	jsr store_direction
-	lda #32				;Same as above, but we're subtracting by 22 to move up
-	sta ($01,X)
-	lda $01				;Load low byte of current location
-	sec				;Set carry flag, carry clear means we borrowed
-	sbc #22				;Subtract by 22 because the space above is offset by 22 (22 cols)
-	sta $01				;Store new location in screen location
-	lda $05				;Do the same with the colour map
-	sec		
-	sbc #22
-	sta $05
-	bcs check_up			;Carry set means we didn't roll over
-	lda $02
-	cmp #$1e			;The carry was clear (we rolled over) so check if it's already in 1e
-	beq check_up			;If it's in $1exx then keep going (maybe we don't need this)
-	dec $02				;Otherwise it's in $1f so bring it to $1e 
-	dec $06				;bring from $97 to $96
-check_up:
-	dec PLRY			;Decrement by 1
-	jsr global_collision		;Check if it's collided with the edge
-	beq draw_up			;If false, continue drawing
-	lda $01				;If true then reset everything by adding it back or incrementing it back
-	clc
-	adc #22
-	sta $01
-	lda $05
-	clc
-	adc #22
-	sta $05
-	inc PLRY
-	jmp draw_up			;Draw it not moving
-draw_up:
-	lda #81				;Draw a red circle
-	sta ($01,X)
-	lda #2
-	sta ($05,X)
-end_move_up:
-	lda #10
-	jsr delay
-	jmp game_loop
-
-move_down:				;Same as above but add 22 to move downi
-	jsr store_direction
-	lda #32					
-	sta ($01,X)
-	lda $01
-	clc
-	adc #22
-	sta $01
-	lda $05
-	clc
-	adc #22
-	sta $05
-	bcc check_down
-	lda $02
-	cmp #$1f
-	beq check_down
-	inc $02
-	inc $06
-check_down:
-	inc PLRY
-	jsr global_collision
-	beq draw_down
-	lda $01
-	sec
-	sbc #22
-	sta $01
-	lda $05
-	sec
-	sbc #22
-	sta $05
-	dec PLRY
-	jmp draw_down
-draw_down:
-	lda #81
-	sta ($01,X)
-	lda #2
-	sta ($05,X)
-end_move_down:
-	lda #10
-	jsr delay
-	jmp game_loop
-
-store_direction:
+turn:	
 	sta PREVDIR
-	rts
-
-shoot:
-	
 	jmp game_loop
+
+shoot:	
+	ldx numbullet			;Load bullet index
+
+	lda PREVDIR
+	sta bulletdir,X			;load current key from A before it's wiped
+	
+	lda #67				;Store circle "sprite"
+	sta bullets,X			;store the sprite in bullets list
+	
+	;get the player location
+	lda PLRX
+	sta bulletx,X
+	lda PLRY
+	sta bullety,X
+	ldy #0
+
+	lda $01
+	sta bulletlow,X
+	lda $02
+	sta bullethigh,X
+
+shoot_left:
+	lda bulletlow,X
+	sec
+	sbc #1
+	sta bulletlow,X
+	lda bullets,X
+	sta (bulletlow,X)
+
+shoot_right:
+
+shoot_up:
+
+shoot_down:
+	
+	;draw the bullet one direction away from player
+shoot_ret:
+	inx				;Increment bullets
+	stx numbullet 			;Store bullet index
+	rts				;return
 
 update_bullet:
-
 	rts
 
 global_collision:
