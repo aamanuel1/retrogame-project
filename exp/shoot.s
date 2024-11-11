@@ -18,6 +18,7 @@ PLRY = $08
 CLOCK = $a2
 PREVDIR = $09
 BULLETCOUNT = $10
+MAX_BULLET = 8
 
 ;VIC CHIP
 BRDR_SCR_COLOUR = $900f
@@ -119,7 +120,7 @@ poll_shoot:
 	bne end_poll 
 	jsr shoot
 end_poll:
-	lda #30 
+	lda #10 
 	jsr delay
 	jsr update_bullet
 	jmp game_loop			;End of "game" loop
@@ -130,6 +131,8 @@ turn:
 
 shoot:	
 	ldx numbullet			;Load bullet index
+	cpx MAX_BULLET
+	beq no_shoot
 
 	lda PREVDIR
 	sta bulletdir,X			;load current key from A before it's wiped
@@ -164,6 +167,8 @@ shoot_left:
 	lda bulletlow,X
 	sec
 	sbc #1
+
+	dec bulletx,X
 	jmp shoot_ret
 
 shoot_right:
@@ -173,6 +178,8 @@ shoot_right:
 	lda bulletlow,X
 	clc
 	adc #1
+
+	inc bulletx,X
 	jmp shoot_ret
 
 shoot_up:
@@ -182,6 +189,8 @@ shoot_up:
 	lda bulletlow,X
 	sec
 	sbc #22
+	
+	dec bullety,X
 	jmp shoot_ret
 
 shoot_down:
@@ -191,6 +200,8 @@ shoot_down:
 	lda bulletlow,X
 	clc
 	adc #22
+
+	inc bullety,X
 	jmp shoot_ret	
 
 shoot_ret:
@@ -203,27 +214,133 @@ no_shoot:
 	rts				;return
 
 update_bullet:
-	;in loop get bullet info
+	;in loop get bullet info	
+	;load index
+	ldx #0
 
-	;perform collision test prediction
+update_bullet_loop:
+	cpx numbullet
+	bne check_bulletdir
+	jmp update_bullet_end
+	cpx MAX_BULLET
+	bne check_bulletdir
+	jmp update_bullet_end
 
-	;update bullet
+check_bulletdir:	
+	lda bulletdir,X
+	cmp #$09
+	beq draw_up
+	cmp #$11
+	beq draw_left
+	cmp #$29
+	beq draw_down
+	cmp #$12
+	beq draw_right	
+	jmp no_draw
 
-	;draw bullet
+draw_left:
+	lda bulletx,X
+	ldy bullety,X
+	sec
+	sbc #1
 
+	sta bulletx,X
+	
+	jsr global_collision
+	bne remove_bullet
+	
+	lda #67				;Store circle "sprite"
+	sta bullets,X			;store the sprite in bullets list
+		
+	lda bulletlow,X
+	sec
+	sbc #1
+	jmp draw_bullet
+
+draw_right:
+	lda bulletx,X
+	ldy bullety,X
+	clc
+	adc #1
+	
+	jsr global_collision
+	bne remove_bullet
+
+	sta bulletx,X
+	
+	lda #67
+	sta bullets,X
+
+	lda bulletlow,X
+	clc
+	adc #1
+	jmp draw_bullet
+
+draw_up:
+	lda bulletx,X
+	ldy bullety,X
+	dey
+
+	jsr global_collision
+	bne remove_bullet
+	
+	lda #93
+	sta bullets,X
+
+	lda bulletlow,X
+	sec
+	sbc #22
+	jmp draw_bullet
+
+draw_down:
+	lda bulletx,X
+	ldy bullety,X
+	iny
+
+	jsr global_collision
+	bne remove_bullet	
+
+	lda #93
+	sta bullets,X
+
+	lda bulletlow,X
+	clc
+	adc #22
+	jmp draw_bullet	
+
+remove_bullet:
+	lda #$40
+	sta bulletdir,X
+	lda #0
+	sta bulletx,X
+	sta bullety,X
+	dex
+	jmp update_bullet_loop
+
+draw_bullet:
+	sta bulletlow,X
+	lda bullets,X
+	sta (bulletlow,X)
+
+no_draw:	
+	;increment and start again
+	inx
+	jmp update_bullet_loop
+
+update_bullet_end:
 	rts
 
 global_collision:
-	lda PLRX			;Load player X position
+	;lda PLRX			;Load player X position
 	cmp #0
 	bmi collide			;X < 0 we collided with left edge
 	cmp #22
 	bpl collide			;X > 22 we collided with right edge
-	lda PLRY			;Load player Y position
-	cmp #0	
-	bmi collide			;X < 0 we collided with top edge
-	cmp #23
-	bpl collide			;X > 23 we collided with bottom edge
+	;lda PLRY			;Load player Y position
+	cpy #0	
+	bmi collide			;Y < 0 we collided with top edge
+	cpy #23
+	bpl collide			;Y > 23 we collided with bottom edge
 	lda #0				;Return false
 	jmp ret_global_collision
 collide:
