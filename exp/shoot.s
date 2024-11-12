@@ -33,6 +33,7 @@ bulletx ds 8
 bullety ds 8
 bulletlow ds 8
 bullethigh ds 8
+bulletcolour ds 8
 
 	SEG
 ;ORIGIN
@@ -98,8 +99,8 @@ main:
 game_loop:		
 	ldx #0
 	lda CURKEY			;CURKEY is $c5 in zero page
-	cmp #$40			;$40 is 64 dec, see pg 179 of VIC20 ref
-	beq game_loop			;64 is no button pressed
+;	cmp #$40			;$40 is 64 dec, see pg 179 of VIC20 ref
+;	beq game_loop			;64 is no button pressed //To remove?!?
 	cmp #$09			;$09 is 9 dec, W button
 	bne poll_left 
 	jmp turn
@@ -120,7 +121,7 @@ poll_shoot:
 	bne end_poll 
 	jsr shoot
 end_poll:
-	lda #10 
+	lda #5 
 	jsr delay
 	jsr update_bullet
 	jmp game_loop			;End of "game" loop
@@ -189,7 +190,7 @@ shoot_up:
 	lda bulletlow,X
 	sec
 	sbc #22
-	
+
 	dec bullety,X
 	jmp shoot_ret
 
@@ -226,7 +227,10 @@ update_bullet_loop:
 	bne check_bulletdir
 	jmp update_bullet_end
 
-check_bulletdir:	
+check_bulletdir:
+	lda #32
+	sta (bulletlow,X)
+	
 	lda bulletdir,X
 	cmp #$09
 	beq draw_up
@@ -238,16 +242,21 @@ check_bulletdir:
 	beq draw_right	
 	jmp no_draw
 
+;DONE rollover memory addresses
+;DONE implment erasure of "shot" behind current shot location
+;TODO debug
 draw_left:
 	lda bulletx,X
 	ldy bullety,X
 	sec
 	sbc #1
-
-	sta bulletx,X
 	
 	jsr global_collision
-	bne remove_bullet
+	beq no_collision_left
+	jmp remove_bullet
+	
+no_collision_left:
+	sta bulletx,X
 	
 	lda #67				;Store circle "sprite"
 	sta bullets,X			;store the sprite in bullets list
@@ -255,6 +264,13 @@ draw_left:
 	lda bulletlow,X
 	sec
 	sbc #1
+
+	bcs continue_left
+	lda bullethigh,X
+	cmp #$1E
+	beq continue_left
+	dec bullethigh,X
+continue_left:
 	jmp draw_bullet
 
 draw_right:
@@ -274,6 +290,12 @@ draw_right:
 	lda bulletlow,X
 	clc
 	adc #1
+	bcc continue_right
+	lda bullethigh,X
+	cmp #$1F
+	beq continue_right
+	inc bullethigh,X
+continue_right:
 	jmp draw_bullet
 
 draw_up:
@@ -284,12 +306,20 @@ draw_up:
 	jsr global_collision
 	bne remove_bullet
 	
+	sty bullety,X
+	
 	lda #93
 	sta bullets,X
 
 	lda bulletlow,X
 	sec
 	sbc #22
+	bcs continue_up
+	lda bullethigh,X
+	cmp #$1E
+	beq continue_up
+	dec bullethigh,X
+continue_up:
 	jmp draw_bullet
 
 draw_down:
@@ -298,7 +328,9 @@ draw_down:
 	iny
 
 	jsr global_collision
-	bne remove_bullet	
+	bne remove_bullet
+
+	sty bullety,X	
 
 	lda #93
 	sta bullets,X
@@ -306,6 +338,12 @@ draw_down:
 	lda bulletlow,X
 	clc
 	adc #22
+	bcc continue_down
+	lda bullethigh,X
+	cmp #$1F
+	beq continue_down
+	dec bullethigh,X
+continue_down:
 	jmp draw_bullet	
 
 remove_bullet:
@@ -314,7 +352,8 @@ remove_bullet:
 	lda #0
 	sta bulletx,X
 	sta bullety,X
-	dex
+	;dex
+	inx
 	jmp update_bullet_loop
 
 draw_bullet:
@@ -328,6 +367,9 @@ no_draw:
 	jmp update_bullet_loop
 
 update_bullet_end:
+	rts
+
+rollover_screenmem:
 	rts
 
 global_collision:
