@@ -34,7 +34,7 @@ bullety ds 8
 bulletlow ds 8
 bullethigh ds 8
 bulletcolour ds 8
-
+bulletaddr ds 2
 	SEG
 ;ORIGIN
 	org $1001
@@ -99,8 +99,8 @@ main:
 game_loop:		
 	ldx #0
 	lda CURKEY			;CURKEY is $c5 in zero page
-;	cmp #$40			;$40 is 64 dec, see pg 179 of VIC20 ref
-;	beq game_loop			;64 is no button pressed //To remove?!?
+	jsr update_bullet
+
 	cmp #$09			;$09 is 9 dec, W button
 	bne poll_left 
 	jmp turn
@@ -121,9 +121,11 @@ poll_shoot:
 	bne end_poll 
 	jsr shoot
 end_poll:
-	lda #5 
+	cmp #$40			;$40 is 64 dec, see pg 179 of VIC20 ref
+	beq game_loop			;64 is no button pressed //To remove?!?
+	lda #20 
 	jsr delay
-	jsr update_bullet
+
 	jmp game_loop			;End of "game" loop
 
 turn:	
@@ -221,15 +223,17 @@ update_bullet:
 
 update_bullet_loop:
 	cpx numbullet
-	bne check_bulletdir
+	bmi check_bulletdir
 	jmp update_bullet_end
 	cpx MAX_BULLET
-	bne check_bulletdir
+	bmi check_bulletdir
 	jmp update_bullet_end
 
 check_bulletdir:
 	lda #32
+	ldy #0
 	sta (bulletlow,X)
+	sta (bulletaddr),Y
 	
 	lda bulletdir,X
 	cmp #$09
@@ -250,13 +254,13 @@ draw_left:
 	ldy bullety,X
 	sec
 	sbc #1
+	sta bulletx,X	
 	
 	jsr global_collision
 	beq no_collision_left
 	jmp remove_bullet
 	
 no_collision_left:
-	sta bulletx,X
 	
 	lda #67				;Store circle "sprite"
 	sta bullets,X			;store the sprite in bullets list
@@ -264,6 +268,7 @@ no_collision_left:
 	lda bulletlow,X
 	sec
 	sbc #1
+	sta bulletlow,X	
 
 	bcs continue_left
 	lda bullethigh,X
@@ -278,11 +283,10 @@ draw_right:
 	ldy bullety,X
 	clc
 	adc #1
+	sta bulletx,X
 	
 	jsr global_collision
 	bne remove_bullet
-
-	sta bulletx,X
 	
 	lda #67
 	sta bullets,X
@@ -290,6 +294,8 @@ draw_right:
 	lda bulletlow,X
 	clc
 	adc #1
+	sta bulletlow,X
+
 	bcc continue_right
 	lda bullethigh,X
 	cmp #$1F
@@ -314,6 +320,8 @@ draw_up:
 	lda bulletlow,X
 	sec
 	sbc #22
+	sta bulletlow,X	
+
 	bcs continue_up
 	lda bullethigh,X
 	cmp #$1E
@@ -338,11 +346,13 @@ draw_down:
 	lda bulletlow,X
 	clc
 	adc #22
+	sta bulletlow,X
+	
 	bcc continue_down
 	lda bullethigh,X
-	cmp #$1F
-	beq continue_down
-	dec bullethigh,X
+	cmp #$1f
+	bpl continue_down
+	inc bullethigh,X
 continue_down:
 	jmp draw_bullet	
 
@@ -353,14 +363,24 @@ remove_bullet:
 	sta bulletx,X
 	sta bullety,X
 	;dex
+	dec numbullet
 	inx
 	jmp update_bullet_loop
 
 draw_bullet:
-	sta bulletlow,X
+;	sta bulletlow,X
+;	lda bullets,X
+;	sta (bulletlow,X)
+	lda bulletlow,X
+	sta bulletaddr
+	lda bullethigh,X
+	ldy #1
+	sta bulletaddr,Y
+	ldy #0
 	lda bullets,X
-	sta (bulletlow,X)
+	sta (bulletaddr),Y
 
+	
 no_draw:	
 	;increment and start again
 	inx
