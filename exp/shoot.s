@@ -129,7 +129,7 @@ end_poll:
 	jmp game_loop			;End of "game" loop
 
 turn:	
-	sta PREVDIR
+	sta PREVDIR			;Stub turn function, stores previous direction
 	jmp game_loop
 
 shoot:	
@@ -141,18 +141,18 @@ shoot:
 	sta bulletdir,X			;load current key from A before it's wiped
 	
 	;get the player location
-	lda PLRX
+	lda PLRX			;Get player X position from zero page
 	sta bulletx,X
-	lda PLRY
+	lda PLRY			;Get player Y position from zero page
 	sta bullety,X
 	ldy #0
 
-	lda $01
+	lda $01				;Load screen memory location (near centre of screen)
 	sta bulletlow,X
-	lda $02
+	lda $02				;Load high bits of memory screen location
 	sta bullethigh,X
 
-	lda bulletdir,X
+	lda bulletdir,X			;Load bullet direction then redirect
 	cmp #$09
 	beq shoot_up
 	cmp #$11
@@ -161,21 +161,21 @@ shoot:
 	beq shoot_down
 	cmp #$12
 	beq shoot_right	
-	jmp no_shoot
+	jmp no_shoot			;If the bullet direction is not WASD then don't shoot
 
 shoot_left:	
-	lda #67				;Store circle "sprite"
+	lda #67				;Store line sprite
 	sta bullets,X			;store the sprite in bullets list
 	
-	lda bulletlow,X
-	sec
-	sbc #1
+	lda bulletlow,X			;Load the low byte of the bullet at X
+	sec				;Set carry
+	sbc #1				;subtract bullet position by 1 to move left
 
-	dec bulletx,X
+	dec bulletx,X			;Decrement the bullet's X position at bulletx[X]
 	jmp shoot_ret
 
 shoot_right:
-	lda #67
+	lda #67				;Similar to shoot left but move right by adding 1
 	sta bullets,X
 
 	lda bulletlow,X
@@ -186,18 +186,18 @@ shoot_right:
 	jmp shoot_ret
 
 shoot_up:
-	lda #93
+	lda #93				;Similar to above but move up by subtracting screenmem by 22
 	sta bullets,X
 
 	lda bulletlow,X
 	sec
 	sbc #22
 
-	dec bullety,X
+	dec bullety,X			;Decrement the Y position
 	jmp shoot_ret
 
 shoot_down:
-	lda #93
+	lda #93				;Similar to above but move down by adding 22 to screenmem
 	sta bullets,X
 
 	lda bulletlow,X
@@ -208,34 +208,32 @@ shoot_down:
 	jmp shoot_ret	
 
 shoot_ret:
-	sta bulletlow,X
-	lda bullets,X
-	sta (bulletlow,X)
+	sta bulletlow,X			;Store shifted low byte of bullet screenmem in zero page
+	lda bullets,X			;Load the object we'll draw into accumulator
+	sta (bulletlow,X)		;Draw the object (indirect indexed deref)
 	inx				;Increment bullets
 	stx numbullet 			;Store bullet index
 no_shoot:
 	rts				;return
 
 update_bullet:
-	;in loop get bullet info	
-	;load index
-	ldx #0
+	ldx #0				;load index
 
-update_bullet_loop:
-	cpx numbullet
+update_bullet_loop:			;Start of loop
+	cpx numbullet			;for(i=0; i<numbullet && i<MAX_BULLET)
 	bmi check_bulletdir
 	jmp update_bullet_end
 	cpx MAX_BULLET
 	bmi check_bulletdir
-	jmp update_bullet_end
+	jmp update_bullet_end		;End for loop
 
 check_bulletdir:
-	lda #32
+	lda #32				;Remove the bullet at current location
 	ldy #0
-	sta (bulletlow,X)
-	sta (bulletaddr),Y
+	sta (bulletlow,X)		;Hacky stopgap measure to erase first draw from origin
+	sta (bulletaddr),Y		;Better measure for removing bullet at full 16bit addr
 	
-	lda bulletdir,X
+	lda bulletdir,X			;Draw the bullet at the right direction similar to shoot
 	cmp #$09
 	beq draw_up
 	cmp #$11
@@ -246,31 +244,27 @@ check_bulletdir:
 	beq draw_right	
 	jmp no_draw
 
-;DONE rollover memory addresses
-;DONE implment erasure of "shot" behind current shot location
-;TODO debug
 draw_left:
-	lda bulletx,X
+	lda bulletx,X			;Load A and Y for the global collision func 
 	ldy bullety,X
-	sec
-	sbc #1
-	sta bulletx,X	
+	sec				
+	sbc #1				;subtract bulletx in accumulator by 1
+	sta bulletx,X			;store shifted bulletx into zero page location
 	
-	jsr global_collision
-	beq no_collision_left
-	jmp remove_bullet
+	jsr global_collision		;Call global_collision
+	beq no_collision_left		;If the call returns 0 false keep going
+	jmp remove_bullet		;If it returns 1 true then remove the bullet.
 	
-no_collision_left:
-	
+no_collision_left:	
 	lda #67				;Store circle "sprite"
 	sta bullets,X			;store the sprite in bullets list
 		
-	lda bulletlow,X
-	sec
+	lda bulletlow,X			;If there was no collison, let's draw the bullet
+	sec				;Similar to shoot code
 	sbc #1
 	sta bulletlow,X	
 
-	bcs continue_left
+	bcs continue_left		;Rollover check
 	lda bullethigh,X
 	cmp #$1E
 	beq continue_left
@@ -279,7 +273,7 @@ continue_left:
 	jmp draw_bullet
 
 draw_right:
-	lda bulletx,X
+	lda bulletx,X			;Similar to previous code above
 	ldy bullety,X
 	clc
 	adc #1
@@ -357,39 +351,36 @@ continue_down:
 	jmp draw_bullet	
 
 remove_bullet:
-	lda #$40
-	sta bulletdir,X
-	lda #0
+	lda #$40			;Load the null direction no button pressed into
+	sta bulletdir,X			;into bulletdir
+	lda #0				;Load 0 into X and Y positions
 	sta bulletx,X
 	sta bullety,X
 	;dex
-	dec numbullet
-	inx
+	dec numbullet			;Decrement the number of bullets
+	inx				;Increment X to continue the bullet update
 	jmp update_bullet_loop
 
 draw_bullet:
-;	sta bulletlow,X
+;	sta bulletlow,X			;Old code for drawing based on only bulletlow 
 ;	lda bullets,X
 ;	sta (bulletlow,X)
-	lda bulletlow,X
-	sta bulletaddr
+	lda bulletlow,X			;New code, take bulletlow and bullethigh
+	sta bulletaddr			;Then store as 16 bit unit in two bytes of zero page
 	lda bullethigh,X
 	ldy #1
-	sta bulletaddr,Y
+	sta bulletaddr,Y		;This is a little endian machine
 	ldy #0
-	lda bullets,X
-	sta (bulletaddr),Y
+	lda bullets,X			;load and draw the bullet
+	sta (bulletaddr),Y		;Draw the bullet (dereference with indirect indexed)
 
 	
 no_draw:	
 	;increment and start again
-	inx
+	inx				;Loop through all bullets
 	jmp update_bullet_loop
 
 update_bullet_end:
-	rts
-
-rollover_screenmem:
 	rts
 
 global_collision:
