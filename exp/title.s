@@ -35,44 +35,39 @@ init_loop:
 
 drawtitle:
 	lda #<SCRMEM			;Load low byte of first screen addr
-	sta CHR_LOW
+	sta CHR_LOW			;Store
 	lda #>SCRMEM			;Load high byte of first screen addr
-	sta CHR_HIGH
-	lda #<COLMEM
+	sta CHR_HIGH			;Store
+	lda #<COLMEM			;Load and store low byte of first colour addr
 	sta COLOUR_LOW
-	lda #>COLMEM
+	lda #>COLMEM			;Load and store high byte of first color addr
 	sta COLOUR_HIGH
 	ldy #$0				;Counter = 0
-	ldx #$0
 drawtitle_loop:
-	lda title_chr,Y			;Load with character (32 dec)
-	sta (CHR_LOW),Y
-	lda title_colour,Y
-	clc
-	adc #8
-	sta (COLOUR_LOW),Y
+	lda title_chr,Y			;Load with title character in title_chr array
+	sta (CHR_LOW),Y			;Store in screen memory
+	lda title_colour,Y		;Load with title colour, 4 bit number + 8
+	sta (COLOUR_LOW),Y		;Store in colour memory
 	iny				;Loop until we loop back to 0
 	bne drawtitle_loop		
-	lda CHR_HIGH
+	lda CHR_HIGH			;Load high character.
 	cmp #$1e			;If we're only halfway done ($1e) then
-	beq drawtitle_lower
-	jmp main
+	beq drawtitle_lower		;Draw some more.
+	jmp main			;If we get here something's wrong.
 drawtitle_lower:
-	inc CHR_HIGH				;Increment 1e to 1f then continue
-	ldy #$0
+	inc CHR_HIGH			;Increment 1e to 1f then continue
+	ldy #$0				;Reload counter = 0
 drawtitle_lower_loop:
-	lda title_chr+$FF,Y
-	sta (CHR_LOW),Y
-	lda title_colour+$FF,Y
-	clc
-	adc #8
+	lda title_chr+$FF,Y		;Shift by 255 of start of title_chr + Y
+	sta (CHR_LOW),Y			;Store in screen memory
+	lda title_colour+$FF,Y		;Same thing with colour memory
 	sta (COLOUR_LOW),Y
-	iny
-	cpy #$FB
-	bne drawtitle_lower_loop
+	iny				;Counter++
+	cpy #$FB			;check if we've reached 506.
+	bne drawtitle_lower_loop	;If not loop again
 
 main:
-	jmp main
+	jmp main			;Loop until the end of time
 
 videosettings:
 	dc.b %00001100			;9000 $05 Interlace off, screen origin horiz 12  (def 5, lower value left
@@ -90,8 +85,8 @@ videosettings:
 	dc.b %0				;900B $0 Alto oscillator
 	dc.b %0				;900C $0 Soprano oscillator
 	dc.b %0				;900D $0 Noise source
-	dc.b %00010000				;900E $0 Bit 4-7 auxilary colour, bit 0-3 sound loudness
-	dc.b %00001110			;900F
+	dc.b %00010000			;900E $0 Bit 4-7 auxilary colour, bit 0-3 sound loudness
+	dc.b %00001110			;900F Screen colour (black) border colour dark blue
 
 	; screen character data
 title_chr:
@@ -102,14 +97,14 @@ title_chr:
 	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
 	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
 	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $2A, $2B, $2C, $2D, $2E, $2F, $50, $20, $20
-	dc.b	$20, $20, $20, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $3A, $3B, $3C, $3D, $3E, $3F, $60, $20, $20
-	dc.b	$20, $20, $20, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $4A, $4B, $4C, $4D, $4E, $4F, $70, $20, $20
+	dc.b	$20, $20, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $2A, $2B, $2C, $2D, $2E, $2F, $50, $20, $20, $20
+	dc.b	$20, $20, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $3A, $3B, $3C, $3D, $3E, $3F, $60, $20, $20, $20
+	dc.b	$20, $20, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $4A, $4B, $4C, $4D, $4E, $4F, $70, $20, $20, $20
 	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
 	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $02, $19, $20, $01, $01, $12, $0F, $0E, $20, $0D, $01, $0E, $15, $05, $0C, $20, $20, $20
+	dc.b	$20, $20, $20, $02, $19, $20, $01, $01, $12, $0F, $0E, $20, $0D, $01, $0E, $15, $05, $0C, $20, $20, $20, $20
 	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $10, $12, $05, $13, $13, $20, $05, $0E, $14, $05, $12, $20, $20, $20, $20, $20
+	dc.b	$20, $20, $20, $20, $20, $10, $12, $05, $13, $13, $20, $05, $0E, $14, $05, $12, $20, $20, $20, $20, $20, $20
 	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
 	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
 	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
@@ -144,7 +139,6 @@ title_colour:
 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	
 
 	org $1800
 ; Character bitmap definitions 2k
