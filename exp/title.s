@@ -56,6 +56,7 @@ drawtitle_loop:
 	jmp main			;If we get here something's wrong.
 drawtitle_lower:
 	inc CHR_HIGH			;Increment 1e to 1f then continue
+	inc COLOUR_HIGH
 	ldy #$0				;Reload counter = 0
 drawtitle_lower_loop:
 	lda title_chr+$FF,Y		;Shift by 255 of start of title_chr + Y
@@ -128,9 +129,9 @@ title_colour:
 	dc.b	$0E, $0E, $0E, $0D, $0D, $0D, $0D, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $0E, $0E, $0E, $0E
 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
 	dc.b	$09, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $09, $0E
-	dc.b	$0E, $0E, $0E, $0E, $09, $09, $09, $09, $09, $09, $09, $09, $0E, $09, $09, $09, $09, $09, $09, $0E, $09, $09
+	dc.b	$0E, $0E, $0E, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $0E, $09, $09
 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $09, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $09, $09, $09, $09, $09, $0E, $09, $09, $09, $09, $09, $0E, $0E, $0E, $0E, $0E
+	dc.b	$0E, $0E, $0E, $0E, $0E, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $0E, $0E, $0E, $0E, $0E
 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
