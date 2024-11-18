@@ -1,4 +1,5 @@
-;decompress_rle_gpt.s GPT version of a decompression program using its RLE algo.
+;decompress_rle_gpt.s heavily edited GPT version of a decompression program 
+;using its RLE algo.
 
     	processor 6502
 
@@ -24,8 +25,6 @@ nextstmt:
 	dc.w 0                      ; end of basic stub
 
 ; Decompression routine starts here
-; Assumes compressed data at address COMPRESSED_DATA
-; Decompressed data will be written starting at DECOMPRESSED_DATA
 
 init:					;Initialize video settings on VIC chip
 	ldy #16				;Iterator
@@ -45,7 +44,7 @@ decompress_rle:
 	sta COLOUR_LOW
 	lda #>COLMEM			;Load and store high byte of first color addr
 	sta COLOUR_HIGH
-	ldy #$00                    	; Initialize index for compressed data
+	ldy #$04                    	; Initialize index for compressed data ($04 b/c of headers)
 
 decompress_char_loop:
 	lda compressed_title,Y       	; Load run length
@@ -54,25 +53,25 @@ decompress_char_loop:
 
     lda compressed_title,Y       	; load data byte
     sta TEMP_BYTE               	; Temporarily store data byte
-    iny
+    iny								; Setup for next run
 
 write_char_loop:
-	tya
+	tya								; Store A in stack so we can dereference
 	pha
-	ldy #$00
+	ldy #$00						; For dereferencing
     lda TEMP_BYTE               	; Load data byte
     sta (CHR_LOW),Y    		; Store data
-	pla 
+	pla 							; Load back from stack
 	tay
-    inc CHR_LOW
-    bne skip_inc_hi_char
-	inc CHR_HIGH			
+    inc CHR_LOW						; Increment the address by 1
+    bne skip_inc_hi_char			; If we loop back from FF to 00
+	inc CHR_HIGH					; Then increment high bits of address
 	
 skip_inc_hi_char:
 	dex                         	; Decrement run length	
 	bne write_char_loop		; Repeat until run length is zero
 
-	lda CHR_HIGH
+	lda CHR_HIGH					; Loop check
 	cmp #$1F
 	bmi decompress_char_loop
 	beq decompress_char_loop
@@ -80,7 +79,7 @@ skip_inc_hi_char:
 	cmp #$FF
 	bmi decompress_char_loop
 
-	ldy #$00
+	ldy #$04						; Load 4 instead of 0 because of headers
 
 decompress_colour_loop:
 	lda compressed_colours,Y       	; Load run length
@@ -92,7 +91,7 @@ decompress_colour_loop:
     iny
 
 write_colour_loop:
-	tya
+	tya								; Same as before but with colour now
 	pha
 	ldy #$00
     lda TEMP_BYTE               	; Load data byte
