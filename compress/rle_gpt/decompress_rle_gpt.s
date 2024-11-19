@@ -18,9 +18,9 @@ TEMP_BYTE = $05
 	org $1001
 
 ;BASIC STUB
-    	dc.w nextstmt
-   	dc.w 10                     ; line number
-    	dc.b $9e, "4109", 0         ; SYS 4109, end of statement
+	dc.w nextstmt
+	dc.w 10                     ; line number
+	dc.b $9e, "4109", 0         ; SYS 4109, end of statement
 nextstmt:
 	dc.w 0                      ; end of basic stub
 
@@ -48,30 +48,30 @@ decompress_rle:
 
 decompress_char_loop:
 	lda compressed_title,Y       	; Load run length
-    tax                         	; Store run length in X register
+	tax                         	; Store run length in X register
 	iny
 
     lda compressed_title,Y       	; load data byte
     sta TEMP_BYTE               	; Temporarily store data byte
-    iny								; Setup for next run
+    iny					; Setup for next run
 
 write_char_loop:
-	tya								; Store A in stack so we can dereference
+	tya				; Store A in stack so we can dereference
 	pha
-	ldy #$00						; For dereferencing
-    lda TEMP_BYTE               	; Load data byte
-    sta (CHR_LOW),Y    		; Store data
-	pla 							; Load back from stack
+	ldy #$00			; For dereferencing
+	lda TEMP_BYTE               	; Load data byte
+	sta (CHR_LOW),Y    		; Store data
+	pla 				; Load back from stack
 	tay
-    inc CHR_LOW						; Increment the address by 1
-    bne skip_inc_hi_char			; If we loop back from FF to 00
-	inc CHR_HIGH					; Then increment high bits of address
+	inc CHR_LOW			; Increment the address by 1
+	bne skip_inc_hi_char		; If we loop back from FF to 00
+	inc CHR_HIGH			; Then increment high bits of address
 	
 skip_inc_hi_char:
-	dex                         	; Decrement run length	
+	dex				; Decrement run length	
 	bne write_char_loop		; Repeat until run length is zero
 
-	lda CHR_HIGH					; Loop check
+	lda CHR_HIGH			; Loop check
 	cmp #$1F
 	bmi decompress_char_loop
 	beq decompress_char_loop
@@ -79,27 +79,27 @@ skip_inc_hi_char:
 	cmp #$FF
 	bmi decompress_char_loop
 
-	ldy #$04						; Load 4 instead of 0 because of headers
+	ldy #$04			; Load 4 instead of 0 because of headers
 
 decompress_colour_loop:
 	lda compressed_colours,Y       	; Load run length
-    tax                         	; Store run length in X register
+	tax                         	; Store run length in X register
 	iny
 
-    lda compressed_colours,Y       	; load data byte
-    sta TEMP_BYTE               	; Temporarily store data byte
-    iny
+	lda compressed_colours,Y       	; load data byte
+	sta TEMP_BYTE               	; Temporarily store data byte
+	iny
 
 write_colour_loop:
-	tya								; Same as before but with colour now
+	tya				; Same as before but with colour now
 	pha
 	ldy #$00
-    lda TEMP_BYTE               	; Load data byte
-    sta (COLOUR_LOW),Y    		; Store data
+	lda TEMP_BYTE               	; Load data byte
+	sta (COLOUR_LOW),Y    		; Store data
 	pla 
 	tay
-    inc COLOUR_LOW
-    bne skip_inc_hi_colour
+	inc COLOUR_LOW
+	bne skip_inc_hi_colour
 	inc COLOUR_HIGH			
 	
 skip_inc_hi_colour:
