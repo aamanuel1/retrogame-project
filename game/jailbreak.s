@@ -30,19 +30,22 @@ PLAYER_DIR = $03
 PLAYER_SPRITE = $04
 PLAYER_LIVES = $05
 PLAYER_ALIVE = $06
+PLAYER_ADDR_LO = $07
+PLAYER_ADDR_HI = $08
 
 ;OBJECTS
 	SEG.U enemies
-	ORG $07
+	ORG $09
 num_enemies ds 1
 enemy_x ds 8
 enemy_y ds 8
 enemy_sprite ds 8
 enemy_alive ds 8
 enemy_dir ds 8
+enemyaddr ds 2
 
 	SEG.U bullets
-	ORG $30
+	ORG $34
 num_bullet ds 1
 bullet_sprite ds 8
 bullet_dir ds 8
