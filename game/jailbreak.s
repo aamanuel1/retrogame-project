@@ -22,20 +22,24 @@ SCRMEM = $1e00
 COLMEM = $9600
 PLRSTRT = $1ee6
 PLRCOLR = $96e6
+SCR_PTR_LO = $01
+SCR_PTR_HI = $02
+COLOUR_PTR_LO = $03
+COLOUR_PTR_HI = $04
 
 ;PLAYER ATTRIBUTES
-PLAYER_X = $01
-PLAYER_Y = $02
-PLAYER_DIR = $03
-PLAYER_SPRITE = $04
-PLAYER_LIVES = $05
-PLAYER_ALIVE = $06
-PLAYER_ADDR_LO = $07
-PLAYER_ADDR_HI = $08
+PLAYER_X = $05
+PLAYER_Y = $06
+PLAYER_DIR = $07
+PLAYER_SPRITE = $08
+PLAYER_LIVES = $09
+PLAYER_ALIVE = $0A
+PLAYER_ADDR_LO = $0B
+PLAYER_ADDR_HI = $0C
 
 ;OBJECTS
 	SEG.U enemies
-	ORG $09
+	ORG $0D
 num_enemies ds 1
 enemy_x ds 8
 enemy_y ds 8
@@ -45,7 +49,7 @@ enemy_dir ds 8
 enemyaddr ds 2
 
 	SEG.U bullets
-	ORG $34
+	ORG $38
 num_bullet ds 1
 bullet_sprite ds 8
 bullet_dir ds 8
@@ -76,6 +80,9 @@ init_loop:
 	sta $9000,Y
 	tya
 	bne init_loop
+
+draw_title:
+	
 
 main:
 	jmp main
