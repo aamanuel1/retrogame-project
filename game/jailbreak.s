@@ -8,6 +8,14 @@ MAX_ENEMIES = 8
 TRUE = 1
 FALSE = 0
 
+;BUTTONS
+NO_KEY = $40
+UP_BUTTON = $09
+LEFT_BUTTON = $11
+DOWN_BUTTON = $29
+RIGHT_BUTTON = $12
+ENTER = $0F
+
 ; KERNAL ADDRESSES
 CHROUT = $ffd2
 GETIN = $ffe4
@@ -22,6 +30,8 @@ SCRMEM = $1e00
 COLMEM = $9600
 PLRSTRT = $1ee6
 PLRCOLR = $96e6
+
+;VRAM POINTERS
 SCR_PTR_LO = $01
 SCR_PTR_HI = $02
 COLOUR_PTR_LO = $03
@@ -36,10 +46,12 @@ PLAYER_LIVES = $09
 PLAYER_ALIVE = $0A
 PLAYER_ADDR_LO = $0B
 PLAYER_ADDR_HI = $0C
+PLAYER_COLOUR_LO = $0D
+PLAYER_COLOUR_HI = $0E
 
 ;OBJECTS
 	SEG.U enemies
-	ORG $0D
+	ORG $0F
 num_enemies ds 1
 enemy_x ds 8
 enemy_y ds 8
@@ -49,7 +61,7 @@ enemy_dir ds 8
 enemyaddr ds 2
 
 	SEG.U bullets
-	ORG $38
+	ORG $3A
 num_bullet ds 1
 bullet_sprite ds 8
 bullet_dir ds 8
@@ -61,9 +73,7 @@ bullet_colour ds 8
 bulletaddr ds 2
 	SEG
 
-CUR_LEVEL = $74
-GEN_PTR_LO = $75
-GEN_PTR_HI = $76
+CUR_LEVEL = $72
 
 ;ORIGIN
 	org $1001
@@ -87,14 +97,7 @@ init_loop:
 
 draw_title:
 	; Load and store starting screen memory locations to draw title
-	lda #<SCRMEM
-	sta SCR_PTR_LO
-	lda #>SCRMEM
-	sta SCR_PTR_HI
-	lda #<COLMEM
-	sta COLOUR_PTR_LO
-	lda #>COLMEM
-	sta COLOUR_PTR_HI
+        jsr load_screen_memory
 	ldy #$00
 	
 draw_title_loop:
@@ -113,40 +116,32 @@ draw_title_loop_lower:
 	iny
 	bne draw_title_loop_lower
 
+        ldy #$00
 colour_title_loop:
-	lda title_colour,Y
+	lda #$09
 	sta (COLOUR_PTR_LO),Y
-	iny
-	bne colour_title_loop
-
-	inc COLOUR_PTR_HI
-
-colour_title_loop_lower:
-	lda title_colour+$FF,Y
-	sta (COLOUR_PTR_LO),Y
-	iny
-	bne colour_title_loop_lower
-
+	inc COLOUR_PTR_LO
+	bne skip_inc_title_colour
+        inc COLOUR_PTR_HI
+skip_inc_title_colour:
+        lda COLOUR_PTR_HI
+        cmp #$97
+        bpl main
+        jmp colour_title_loop
 main:
         lda CURKEY
-        cmp #$0F
+        cmp #ENTER
         beq game_start
 	jmp main
 
 game_start:
         jsr draw_level
 game_loop:
-        jmp game_loop
+        jsr poll_input
+	jmp game_loop			;End of "game" loop
 
 draw_level:
-        lda #<SCRMEM
-	sta SCR_PTR_LO
-	lda #>SCRMEM
-	sta SCR_PTR_HI
-	lda #<COLMEM
-	sta COLOUR_PTR_LO
-	lda #>COLMEM
-	sta COLOUR_PTR_HI
+        jsr load_screen_memory
 	ldy #$00
         ldx #$00
 draw_level_loop:
@@ -185,6 +180,129 @@ store_player:
         rts
 
 store_enemy:
+
+load_screen_memory:
+	lda #<SCRMEM
+	sta SCR_PTR_LO
+	lda #>SCRMEM
+	sta SCR_PTR_HI
+	lda #<COLMEM
+	sta COLOUR_PTR_LO
+	lda #>COLMEM
+	sta COLOUR_PTR_HI
+        rts
+
+load_screen_location:
+        sta SCR_PTR_LO
+        sty SCR_PTR_HI
+        rts
+
+poll_input:
+	lda CURKEY			;CURKEY is $c5 in zero page
+	cmp #NO_KEY			;$40 is 64 dec, see pg 179 of VIC20 ref
+	beq game_loop			;64 is no button pressed
+	cmp #UP_BUTTON			;$09 is 9 dec, W button
+	bne poll_left 
+	jsr move_up
+        jmp end_poll
+poll_left:				
+	cmp #LEFT_BUTTON			;$11 is 17 dec, A button
+	bne poll_down
+	jsr move_left
+        jmp end_poll
+poll_down:	
+	cmp #DOWN_BUTTON			;$29 is 41 dec, S button
+	bne poll_right
+	jsr move_down
+        jmp end_poll
+poll_right:	
+	cmp #RIGHT_BUTTON			;$12 is 18 dec, D button
+	bne poll_shoot
+	jsr move_right
+        jmp end_poll
+poll_shoot:
+	cmp #ENTER			;$0F is 15 dec, return button
+	bne end_poll 
+	jsr shoot
+end_poll:
+        rts
+
+move_left:
+        ldx #$00
+        lda PLAYER_ADDR_LO
+        ldy PLAYER_ADDR_HI
+        jsr load_screen_location
+	lda #32				;Clear current location with SPACE
+	sta (SCR_PTR_LO,X)
+	lda PLAYER_ADDR_LO		;Load current location for operations
+	sec				;DON'T forget to set this.
+	sbc #1				;subtract 1 to move left
+	sta PLAYER_ADDR_LO	        ;Store in low byte of screen map
+	; lda $05			;Load current colour map location
+	; sec
+	; sbc #1			;Subtract by 1 to colour left tile
+	; sta $05			;Store in low byte of screen map
+	bcs check_left			;Do a check of the location if didn't roll over
+	lda PLAYER_ADDR_HI		;If we did roll over (carry clear)
+	cmp #$1E			;Do a check if we're in $1F
+	beq check_left			;If we're not then continue the ckeck
+	dec PLAYER_ADDR_HI				;Otherwise, turn $1F to $1E
+	; dec $06				;turn $97 to $96
+check_left:
+        ldy #$00
+        lda (PLAYER_ADDR_LO),Y
+	jsr global_collision		;Check if it's bumping against edge of map
+	beq draw_left			;If it's 0 then keep going
+	inc PLAYER_ADDR_LO				;If it's 1 then reset everything.
+	; inc $05
+	; inc PLRX			;Reset the X counter
+	jmp draw_left			;Draw it not moving.
+draw_left:
+        lda PLAYER_ADDR_LO
+        ldy PLAYER_ADDR_HI
+        jsr load_screen_location
+	lda #$37				;Draw the guy
+	sta (SCR_PTR_LO,X)
+	; lda #2				;That is red.
+	; sta ($05,X)
+end_move_left:
+        lda #60
+        jsr delay
+	rts
+
+move_right:
+        rts
+
+move_up:
+        rts
+
+move_down:
+        rts
+
+shoot:
+        rts
+
+
+global_collision:
+        ; ldx #$00
+        ; tay
+        ; lda (Y,X)
+	cmp #$3F
+	beq collide			;X < 0 we collided with left edge
+	; cmp #22
+	; bpl collide			;X > 22 we collided with right edge
+	; ;lda PLRY			;Load player Y position
+	; cpy #0	
+	; bmi collide			;Y < 0 we collided with top edge
+	; cpy #23
+	; bpl collide			;Y > 23 we collided with bottom edge
+	lda #0				;Return false
+	jmp ret_global_collision
+collide:
+	lda #1				;Return true
+	jmp ret_global_collision
+ret_global_collision:
+	rts				;Return result.
 
 delay:
 	clc				;clear carry flag
@@ -240,30 +358,30 @@ title_chr:
 	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
 
 ; screen color data
-title_colour:
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $0E, $0E, $0E
-	dc.b	$0E, $0E, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $09, $09, $0E, $09, $09, $09, $09, $09, $0E, $09, $09, $09, $09, $09, $09, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $09, $09, $09, $09, $09, $0E, $09, $09, $09, $09, $09, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $09, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
-	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; title_colour:
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $09, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $09, $09, $0E, $09, $09, $09, $09, $09, $0E, $09, $09, $09, $09, $09, $09, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $09, $09, $09, $09, $09, $0E, $09, $09, $09, $09, $09, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $09, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+; 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
 
 level_1:
         dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
