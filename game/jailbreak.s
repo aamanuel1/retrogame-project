@@ -61,6 +61,10 @@ bullet_colour ds 8
 bulletaddr ds 2
 	SEG
 
+CUR_LEVEL = $74
+GEN_PTR_LO = $75
+GEN_PTR_HI = $76
+
 ;ORIGIN
 	org $1001
 
@@ -124,8 +128,71 @@ colour_title_loop_lower:
 	bne colour_title_loop_lower
 
 main:
-        
+        lda CURKEY
+        cmp #$0F
+        beq game_start
 	jmp main
+
+game_start:
+        jsr draw_level
+game_loop:
+        jmp game_loop
+
+draw_level:
+        lda #<SCRMEM
+	sta SCR_PTR_LO
+	lda #>SCRMEM
+	sta SCR_PTR_HI
+	lda #<COLMEM
+	sta COLOUR_PTR_LO
+	lda #>COLMEM
+	sta COLOUR_PTR_HI
+	ldy #$00
+        ldx #$00
+draw_level_loop:
+	lda level_1,Y
+	sta (SCR_PTR_LO,X)
+        cmp #$37
+        bne skip_store_player
+        jsr store_player
+skip_store_player:
+        iny
+	inc SCR_PTR_LO
+	bne draw_level_loop
+
+	inc SCR_PTR_HI
+        iny
+
+draw_level_loop_lower:
+	lda level_1+$FF,Y
+	sta (SCR_PTR_LO,X)
+        cmp #$37
+        bne skip_store_player_2
+        jsr store_player
+skip_store_player_2:
+        iny
+        inc SCR_PTR_LO
+	bne draw_level_loop_lower
+
+        rts
+
+store_player:
+        lda SCR_PTR_LO
+        sta PLAYER_ADDR_LO
+        lda SCR_PTR_HI
+        sta PLAYER_ADDR_HI
+        sta PLAYER_ADDR_HI
+        rts
+
+store_enemy:
+
+delay:
+	clc				;clear carry flag
+	adc CLOCK			;Add existing time with lowest 24-bit 3byte jiffy clock value
+delay_loop:
+	cmp CLOCK			;Compare A + clock with clock not equal then we haven't finished yet
+	bne delay_loop			
+	rts
 
 videosettings:
 	dc.b %00001100			;9000 $05 Interlace off, screen origin horiz 12  (def 5, lower value left
@@ -197,6 +264,31 @@ title_colour:
 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
 	dc.b	$0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E, $0E
+
+level_1:
+        dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3C, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $3F, $3F, $3F, $3F, $3F, $3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $37, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $20, $20, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
 
 	org $1800
 ; Character bitmap definitions only 128 chrs, 63 left to 1dff.
