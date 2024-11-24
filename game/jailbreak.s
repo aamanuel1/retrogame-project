@@ -62,7 +62,7 @@ enemyaddr ds 2
 
 	SEG.U bullets
 	ORG $3A
-num_bullet ds 1
+numbullet ds 1
 bullet_sprite ds 8
 bullet_dir ds 8
 bullet_x ds 8
@@ -74,6 +74,8 @@ bulletaddr ds 2
 	SEG
 
 CUR_LEVEL = $72
+CUR_SPRITE = $73
+OBJECT_DIR = $74
 
 ;ORIGIN
 	org $1001
@@ -209,32 +211,51 @@ screen_to_player:
 poll_input:
 	jsr player_to_screen
 	lda CURKEY			;CURKEY is $c5 in zero page
+	sta PLAYER_DIR
+	sta OBJECT_DIR
 	cmp #NO_KEY			;$40 is 64 dec, see pg 179 of VIC20 ref
 	beq game_loop			;64 is no button pressed
 	cmp #UP_BUTTON			;$09 is 9 dec, W button
-	bne poll_left 
+	bne poll_left
+	lda #$37
+	sta CUR_SPRITE
 	jsr move_up
         jmp end_poll
 poll_left:				
 	cmp #LEFT_BUTTON			;$11 is 17 dec, A button
 	bne poll_down
+	lda #$39
+	sta CUR_SPRITE
 	jsr move_left
         jmp end_poll
 poll_down:	
 	cmp #DOWN_BUTTON			;$29 is 41 dec, S button
 	bne poll_right
+	lda #$38
+	sta CUR_SPRITE
 	jsr move_down
         jmp end_poll
 poll_right:	
 	cmp #RIGHT_BUTTON			;$12 is 18 dec, D button
 	bne poll_shoot
+	lda #$3A
+	sta CUR_SPRITE
 	jsr move_right
         jmp end_poll
 poll_shoot:
 	cmp #ENTER			;$0F is 15 dec, return button
-	bne end_poll 
+	bne idle 
 	jsr shoot
+	jmp end_poll
+idle:
+	lda #NO_KEY
+	sta PLAYER_DIR
+	sta OBJECT_DIR
+	lda #$20
+	sta CUR_SPRITE
 end_poll:
+	lda CUR_SPRITE
+	sta PLAYER_SPRITE
 	jsr screen_to_player
         rts
 
@@ -259,7 +280,7 @@ check_left:
 	inc SCR_PTR_LO		;If it's 1 then reset everything.
 	jmp draw_left			;Draw it not moving.
 draw_left:
-	lda #$37			;Draw the guy
+	lda CUR_SPRITE			;Draw the guy
 	sta (SCR_PTR_LO,X)
 end_move_left:
         lda #60
@@ -287,7 +308,7 @@ check_right:
 	dec SCR_PTR_LO
 	jmp draw_right
 draw_right:
-	lda #$37
+	lda CUR_SPRITE
 	sta (SCR_PTR_LO,X)
 end_move_right:
         lda #60
@@ -321,7 +342,7 @@ skip_inc_up:
 	sta SCR_PTR_LO
 	jmp draw_up			;Draw it not moving
 draw_up:
-	lda #$37			;Draw a red circle
+	lda CUR_SPRITE			;Draw a red circle
 	sta (SCR_PTR_LO,X)
 end_move_up:
 	lda #60
@@ -356,7 +377,7 @@ skip_dec_down:
 	sta SCR_PTR_LO
 	jmp draw_down
 draw_down:
-        lda #$37
+        lda CUR_SPRITE
 	sta (SCR_PTR_LO,X)
 end_move_down:
         lda #60
@@ -364,6 +385,14 @@ end_move_down:
 	rts
 
 shoot:
+	ldx numbullet
+	cpx MAX_BULLET
+	bne inc_numbullet
+	ldx #$00
+	stx numbullet
+	jmp inc_numbullet 
+inc_numbullet:
+	inc numbullet
         rts
 
 
