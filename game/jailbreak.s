@@ -197,6 +197,9 @@ load_screen_location:
         sty SCR_PTR_HI
         rts
 
+;TODO: Change the move_dir subroutines to work generically, likely to just move the
+;Screen pointer around then store result in whoever called it assuming the values are still in
+;Screen pointer. 
 poll_input:
 	lda CURKEY			;CURKEY is $c5 in zero page
 	cmp #NO_KEY			;$40 is 64 dec, see pg 179 of VIC20 ref
@@ -296,10 +299,95 @@ end_move_right:
         rts
 
 move_up:
-        rts
+        ldx #$00
+	lda PLAYER_ADDR_LO
+	ldy PLAYER_ADDR_HI
+	jsr load_screen_location
+	lda #32				;Same as above, but we're subtracting by 22 to move up
+	sta (SCR_PTR_LO,X)
+	lda PLAYER_ADDR_LO		;Load low byte of current location
+	sec				;Set carry flag, carry clear means we borrowed
+	sbc #22				;Subtract by 22 because the space above is offset by 22 (22 cols)
+	sta PLAYER_ADDR_LO		;Store new location in screen location
+	bcs check_up			;Carry set means we didn't roll over
+	lda PLAYER_ADDR_HI
+	cmp #$1e			;The carry was clear (we rolled over) so check if it's already in 1e
+	beq check_up			;If it's in $1exx then keep going (maybe we don't need this)
+	dec PLAYER_ADDR_HI		;Otherwise it's in $1f so bring it to $1e
+check_up:
+	ldy #$00
+	lda (PLAYER_ADDR_LO),y
+	jsr global_collision		;Check if it's collided with the edge
+	beq draw_up			;If false, continue drawing
+	lda PLAYER_ADDR_LO				;If true then reset everything by adding it back or incrementing it back
+	clc
+	adc #22
+        bcc skip_inc_up
+        inc PLAYER_ADDR_HI
+skip_inc_up:
+	sta PLAYER_ADDR_LO
+	jmp draw_up			;Draw it not moving
+draw_up:
+	lda PLAYER_ADDR_LO
+	ldy PLAYER_ADDR_HI
+	jsr load_screen_location
+	lda #$37			;Draw a red circle
+	sta (SCR_PTR_LO,X)
+end_move_up:
+	lda #60
+	jsr delay			;Delay to make it less fast
+	rts
 
-move_down:
-        rts
+move_down:				;Same as above but add 22 to move down
+        ldx #$00
+        lda PLAYER_ADDR_LO
+        ldy PLAYER_ADDR_HI
+        jsr load_screen_location
+        lda #32
+	sta (SCR_PTR_LO,X)
+	lda PLAYER_ADDR_LO
+	clc
+	adc #22
+	sta PLAYER_ADDR_LO
+	; lda $05
+	; clc
+	; adc #22
+	; sta $05
+	bcc check_down
+	lda PLAYER_ADDR_HI
+	cmp #$1f
+	beq check_down
+	inc PLAYER_ADDR_HI
+	inc $06
+check_down:
+	; inc PLRY
+        ldy #$99
+        lda (PLAYER_ADDR_LO),Y
+	jsr global_collision
+	beq draw_down
+	lda PLAYER_ADDR_LO
+	sec
+	sbc #22
+        bcs skip_dec_down
+        dec PLAYER_ADDR_HI
+skip_dec_down:
+	sta PLAYER_ADDR_LO
+	; lda $05
+	; sec
+	; sbc #22
+	; sta $05
+	; dec PLRY
+	jmp draw_down
+draw_down:
+	lda PLAYER_ADDR_LO
+        ldy PLAYER_ADDR_HI
+        jsr load_screen_location
+        lda #$37
+	sta (SCR_PTR_LO,X)
+end_move_down:
+        lda #60
+	jsr delay
+	rts
 
 shoot:
         rts
