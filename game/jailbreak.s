@@ -238,39 +238,61 @@ move_left:
 	sec				;DON'T forget to set this.
 	sbc #1				;subtract 1 to move left
 	sta PLAYER_ADDR_LO	        ;Store in low byte of screen map
-	; lda $05			;Load current colour map location
-	; sec
-	; sbc #1			;Subtract by 1 to colour left tile
-	; sta $05			;Store in low byte of screen map
 	bcs check_left			;Do a check of the location if didn't roll over
 	lda PLAYER_ADDR_HI		;If we did roll over (carry clear)
-	cmp #$1E			;Do a check if we're in $1F
+	cmp #$1E			;Do a check if we're in $1F NOTE: Remove later
 	beq check_left			;If we're not then continue the ckeck
-	dec PLAYER_ADDR_HI				;Otherwise, turn $1F to $1E
-	; dec $06				;turn $97 to $96
+	dec PLAYER_ADDR_HI		;Otherwise, turn $1F to $1E
 check_left:
         ldy #$00
         lda (PLAYER_ADDR_LO),Y
 	jsr global_collision		;Check if it's bumping against edge of map
 	beq draw_left			;If it's 0 then keep going
-	inc PLAYER_ADDR_LO				;If it's 1 then reset everything.
-	; inc $05
-	; inc PLRX			;Reset the X counter
+	inc PLAYER_ADDR_LO		;If it's 1 then reset everything.
 	jmp draw_left			;Draw it not moving.
 draw_left:
         lda PLAYER_ADDR_LO
         ldy PLAYER_ADDR_HI
         jsr load_screen_location
-	lda #$37				;Draw the guy
+	lda #$37			;Draw the guy
 	sta (SCR_PTR_LO,X)
-	; lda #2				;That is red.
-	; sta ($05,X)
 end_move_left:
         lda #60
         jsr delay
 	rts
 
 move_right:
+        ldx #$00
+        lda PLAYER_ADDR_LO
+        ldy PLAYER_ADDR_HI
+        jsr load_screen_location
+	lda #32				;Same as above but we're adding 1 to move right
+	sta (SCR_PTR_LO,X)
+        lda PLAYER_ADDR_LO
+	clc
+	adc #1
+	sta PLAYER_ADDR_LO
+	bcc check_right
+	lda PLAYER_ADDR_HI
+	cmp #$1F
+	beq check_right
+	inc PLAYER_ADDR_HI
+check_right:
+        ldy #$00
+        lda (PLAYER_ADDR_LO),Y
+	jsr global_collision
+	beq draw_right
+	dec PLAYER_ADDR_LO
+	jmp draw_right
+draw_right:
+        lda PLAYER_ADDR_LO
+        ldy PLAYER_ADDR_HI
+        jsr load_screen_location
+	lda #$37
+	sta (SCR_PTR_LO,X)
+end_move_right:
+        lda #60
+	jsr delay
         rts
 
 move_up:
@@ -284,18 +306,8 @@ shoot:
 
 
 global_collision:
-        ; ldx #$00
-        ; tay
-        ; lda (Y,X)
 	cmp #$3F
 	beq collide			;X < 0 we collided with left edge
-	; cmp #22
-	; bpl collide			;X > 22 we collided with right edge
-	; ;lda PLRY			;Load player Y position
-	; cpy #0	
-	; bmi collide			;Y < 0 we collided with top edge
-	; cpy #23
-	; bpl collide			;Y > 23 we collided with bottom edge
 	lda #0				;Return false
 	jmp ret_global_collision
 collide:
