@@ -349,10 +349,6 @@ move_down:				;Same as above but add 22 to move down
 	clc
 	adc #22
 	sta PLAYER_ADDR_LO
-	; lda $05
-	; clc
-	; adc #22
-	; sta $05
 	bcc check_down
 	lda PLAYER_ADDR_HI
 	cmp #$1f
@@ -372,11 +368,6 @@ check_down:
         dec PLAYER_ADDR_HI
 skip_dec_down:
 	sta PLAYER_ADDR_LO
-	; lda $05
-	; sec
-	; sbc #22
-	; sta $05
-	; dec PLRY
 	jmp draw_down
 draw_down:
 	lda PLAYER_ADDR_LO
