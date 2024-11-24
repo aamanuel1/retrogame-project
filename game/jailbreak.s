@@ -192,15 +192,25 @@ load_screen_memory:
 	sta COLOUR_PTR_HI
         rts
 
-load_screen_location:
+player_to_screen:
+	lda PLAYER_ADDR_LO
         sta SCR_PTR_LO
+	ldy PLAYER_ADDR_HI
         sty SCR_PTR_HI
         rts
+
+screen_to_player:
+	lda SCR_PTR_LO
+	sta PLAYER_ADDR_LO
+	lda SCR_PTR_HI
+	sta PLAYER_ADDR_HI
+	rts
 
 ;TODO: Change the move_dir subroutines to work generically, likely to just move the
 ;Screen pointer around then store result in whoever called it assuming the values are still in
 ;Screen pointer. 
 poll_input:
+	jsr player_to_screen
 	lda CURKEY			;CURKEY is $c5 in zero page
 	cmp #NO_KEY			;$40 is 64 dec, see pg 179 of VIC20 ref
 	beq game_loop			;64 is no button pressed
@@ -228,35 +238,36 @@ poll_shoot:
 	bne end_poll 
 	jsr shoot
 end_poll:
+	jsr screen_to_player
         rts
 
 move_left:
         ldx #$00
-        lda PLAYER_ADDR_LO
-        ldy PLAYER_ADDR_HI
-        jsr load_screen_location
+;        lda PLAYER_ADDR_LO
+;        ldy PLAYER_ADDR_HI
+;        jsr player_to_screen
 	lda #32				;Clear current location with SPACE
 	sta (SCR_PTR_LO,X)
-	lda PLAYER_ADDR_LO		;Load current location for operations
+	lda SCR_PTR_LO			;Load current location for operations
 	sec				;DON'T forget to set this.
 	sbc #1				;subtract 1 to move left
-	sta PLAYER_ADDR_LO	        ;Store in low byte of screen map
+	sta SCR_PTR_LO	        	;Store in low byte of screen map
 	bcs check_left			;Do a check of the location if didn't roll over
-	lda PLAYER_ADDR_HI		;If we did roll over (carry clear)
+	lda SCR_PTR_HI			;If we did roll over (carry clear)
 	cmp #$1E			;Do a check if we're in $1F NOTE: Remove later
 	beq check_left			;If we're not then continue the ckeck
-	dec PLAYER_ADDR_HI		;Otherwise, turn $1F to $1E
+	dec SCR_PTR_HI			;Otherwise, turn $1F to $1E
 check_left:
         ldy #$00
-        lda (PLAYER_ADDR_LO),Y
+        lda (SCR_PTR_LO),Y
 	jsr global_collision		;Check if it's bumping against edge of map
 	beq draw_left			;If it's 0 then keep going
-	inc PLAYER_ADDR_LO		;If it's 1 then reset everything.
+	inc SCR_PTR_LO		;If it's 1 then reset everything.
 	jmp draw_left			;Draw it not moving.
 draw_left:
-        lda PLAYER_ADDR_LO
-        ldy PLAYER_ADDR_HI
-        jsr load_screen_location
+;        lda SCR_PTR_LO
+;        ldy SCR_PTR_HI
+;        jsr load_screen_location
 	lda #$37			;Draw the guy
 	sta (SCR_PTR_LO,X)
 end_move_left:
@@ -266,31 +277,31 @@ end_move_left:
 
 move_right:
         ldx #$00
-        lda PLAYER_ADDR_LO
-        ldy PLAYER_ADDR_HI
-        jsr load_screen_location
+;        lda PLAYER_ADDR_LO
+;        ldy PLAYER_ADDR_HI
+;        jsr load_screen_location
 	lda #32				;Same as above but we're adding 1 to move right
 	sta (SCR_PTR_LO,X)
-        lda PLAYER_ADDR_LO
+        lda SCR_PTR_LO
 	clc
 	adc #1
-	sta PLAYER_ADDR_LO
+	sta SCR_PTR_LO
 	bcc check_right
-	lda PLAYER_ADDR_HI
+	lda SCR_PTR_HI
 	cmp #$1F
 	beq check_right
-	inc PLAYER_ADDR_HI
+	inc SCR_PTR_HI
 check_right:
         ldy #$00
-        lda (PLAYER_ADDR_LO),Y
+        lda (SCR_PTR_LO),Y
 	jsr global_collision
 	beq draw_right
-	dec PLAYER_ADDR_LO
+	dec SCR_PTR_LO
 	jmp draw_right
 draw_right:
-        lda PLAYER_ADDR_LO
-        ldy PLAYER_ADDR_HI
-        jsr load_screen_location
+;        lda SCR_PTR_LO
+;        ldy SCR_PTR_HI
+;        jsr load_screen_location
 	lda #$37
 	sta (SCR_PTR_LO,X)
 end_move_right:
@@ -300,37 +311,37 @@ end_move_right:
 
 move_up:
         ldx #$00
-	lda PLAYER_ADDR_LO
-	ldy PLAYER_ADDR_HI
-	jsr load_screen_location
+;	lda PLAYER_ADDR_LO
+;	ldy PLAYER_ADDR_HI
+;	jsr load_screen_location
 	lda #32				;Same as above, but we're subtracting by 22 to move up
 	sta (SCR_PTR_LO,X)
-	lda PLAYER_ADDR_LO		;Load low byte of current location
+	lda SCR_PTR_LO			;Load low byte of current location
 	sec				;Set carry flag, carry clear means we borrowed
 	sbc #22				;Subtract by 22 because the space above is offset by 22 (22 cols)
-	sta PLAYER_ADDR_LO		;Store new location in screen location
+	sta SCR_PTR_LO		;Store new location in screen location
 	bcs check_up			;Carry set means we didn't roll over
-	lda PLAYER_ADDR_HI
+	lda SCR_PTR_LO
 	cmp #$1e			;The carry was clear (we rolled over) so check if it's already in 1e
 	beq check_up			;If it's in $1exx then keep going (maybe we don't need this)
-	dec PLAYER_ADDR_HI		;Otherwise it's in $1f so bring it to $1e
+	dec SCR_PTR_HI		;Otherwise it's in $1f so bring it to $1e
 check_up:
 	ldy #$00
-	lda (PLAYER_ADDR_LO),y
+	lda (SCR_PTR_LO),y
 	jsr global_collision		;Check if it's collided with the edge
 	beq draw_up			;If false, continue drawing
-	lda PLAYER_ADDR_LO				;If true then reset everything by adding it back or incrementing it back
+	lda SCR_PTR_LO			;If true then reset everything by adding it back or incrementing it back
 	clc
 	adc #22
         bcc skip_inc_up
-        inc PLAYER_ADDR_HI
+        inc SCR_PTR_HI
 skip_inc_up:
-	sta PLAYER_ADDR_LO
+	sta SCR_PTR_LO
 	jmp draw_up			;Draw it not moving
 draw_up:
-	lda PLAYER_ADDR_LO
-	ldy PLAYER_ADDR_HI
-	jsr load_screen_location
+;	lda SCR_PTR_LO
+;	ldy PLAYER_ADDR_HI
+;	jsr load_screen_location
 	lda #$37			;Draw a red circle
 	sta (SCR_PTR_LO,X)
 end_move_up:
@@ -340,39 +351,38 @@ end_move_up:
 
 move_down:				;Same as above but add 22 to move down
         ldx #$00
-        lda PLAYER_ADDR_LO
-        ldy PLAYER_ADDR_HI
-        jsr load_screen_location
+;        lda PLAYER_ADDR_LO
+;        ldy PLAYER_ADDR_HI
+;        jsr load_screen_location
         lda #32
 	sta (SCR_PTR_LO,X)
-	lda PLAYER_ADDR_LO
+	lda SCR_PTR_LO
 	clc
 	adc #22
-	sta PLAYER_ADDR_LO
+	sta SCR_PTR_LO
 	bcc check_down
-	lda PLAYER_ADDR_HI
+	lda SCR_PTR_HI
 	cmp #$1f
 	beq check_down
-	inc PLAYER_ADDR_HI
-	inc $06
+	inc SCR_PTR_HI
 check_down:
 	; inc PLRY
         ldy #$99
-        lda (PLAYER_ADDR_LO),Y
+        lda (SCR_PTR_LO),Y
 	jsr global_collision
 	beq draw_down
-	lda PLAYER_ADDR_LO
+	lda SCR_PTR_LO
 	sec
 	sbc #22
         bcs skip_dec_down
-        dec PLAYER_ADDR_HI
+        dec SCR_PTR_HI
 skip_dec_down:
-	sta PLAYER_ADDR_LO
+	sta SCR_PTR_LO
 	jmp draw_down
 draw_down:
-	lda PLAYER_ADDR_LO
-        ldy PLAYER_ADDR_HI
-        jsr load_screen_location
+;	lda SCR_PTR_LO
+;        ldy SCR_PTR_HI
+;        jsr load_screen_location
         lda #$37
 	sta (SCR_PTR_LO,X)
 end_move_down:
