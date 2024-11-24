@@ -206,9 +206,6 @@ screen_to_player:
 	sta PLAYER_ADDR_HI
 	rts
 
-;TODO: Change the move_dir subroutines to work generically, likely to just move the
-;Screen pointer around then store result in whoever called it assuming the values are still in
-;Screen pointer. 
 poll_input:
 	jsr player_to_screen
 	lda CURKEY			;CURKEY is $c5 in zero page
@@ -243,9 +240,6 @@ end_poll:
 
 move_left:
         ldx #$00
-;        lda PLAYER_ADDR_LO
-;        ldy PLAYER_ADDR_HI
-;        jsr player_to_screen
 	lda #32				;Clear current location with SPACE
 	sta (SCR_PTR_LO,X)
 	lda SCR_PTR_LO			;Load current location for operations
@@ -265,9 +259,6 @@ check_left:
 	inc SCR_PTR_LO		;If it's 1 then reset everything.
 	jmp draw_left			;Draw it not moving.
 draw_left:
-;        lda SCR_PTR_LO
-;        ldy SCR_PTR_HI
-;        jsr load_screen_location
 	lda #$37			;Draw the guy
 	sta (SCR_PTR_LO,X)
 end_move_left:
@@ -277,9 +268,6 @@ end_move_left:
 
 move_right:
         ldx #$00
-;        lda PLAYER_ADDR_LO
-;        ldy PLAYER_ADDR_HI
-;        jsr load_screen_location
 	lda #32				;Same as above but we're adding 1 to move right
 	sta (SCR_PTR_LO,X)
         lda SCR_PTR_LO
@@ -299,9 +287,6 @@ check_right:
 	dec SCR_PTR_LO
 	jmp draw_right
 draw_right:
-;        lda SCR_PTR_LO
-;        ldy SCR_PTR_HI
-;        jsr load_screen_location
 	lda #$37
 	sta (SCR_PTR_LO,X)
 end_move_right:
@@ -311,9 +296,6 @@ end_move_right:
 
 move_up:
         ldx #$00
-;	lda PLAYER_ADDR_LO
-;	ldy PLAYER_ADDR_HI
-;	jsr load_screen_location
 	lda #32				;Same as above, but we're subtracting by 22 to move up
 	sta (SCR_PTR_LO,X)
 	lda SCR_PTR_LO			;Load low byte of current location
@@ -339,9 +321,6 @@ skip_inc_up:
 	sta SCR_PTR_LO
 	jmp draw_up			;Draw it not moving
 draw_up:
-;	lda SCR_PTR_LO
-;	ldy PLAYER_ADDR_HI
-;	jsr load_screen_location
 	lda #$37			;Draw a red circle
 	sta (SCR_PTR_LO,X)
 end_move_up:
@@ -351,9 +330,6 @@ end_move_up:
 
 move_down:				;Same as above but add 22 to move down
         ldx #$00
-;        lda PLAYER_ADDR_LO
-;        ldy PLAYER_ADDR_HI
-;        jsr load_screen_location
         lda #32
 	sta (SCR_PTR_LO,X)
 	lda SCR_PTR_LO
@@ -380,9 +356,6 @@ skip_dec_down:
 	sta SCR_PTR_LO
 	jmp draw_down
 draw_down:
-;	lda SCR_PTR_LO
-;        ldy SCR_PTR_HI
-;        jsr load_screen_location
         lda #$37
 	sta (SCR_PTR_LO,X)
 end_move_down:
