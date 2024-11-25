@@ -3,7 +3,7 @@
 	processor 6502
 
 ;CONSTANTS
-MAX_BULLET = 16
+MAX_BULLET = 8
 MAX_ENEMIES = 8
 TRUE = 1
 FALSE = 0
@@ -137,6 +137,8 @@ main:
 	jmp main
 
 game_start:
+	lda #$00
+	sta numbullet
         jsr draw_level
 game_loop:
         jsr poll_input
@@ -211,8 +213,8 @@ screen_to_player:
 poll_input:
 	jsr player_to_screen
 	lda CURKEY			;CURKEY is $c5 in zero page
-	sta PLAYER_DIR
-	sta OBJECT_DIR
+;	sta PLAYER_DIR
+;	sta OBJECT_DIR
 	cmp #NO_KEY			;$40 is 64 dec, see pg 179 of VIC20 ref
 	beq game_loop			;64 is no button pressed
 	cmp #UP_BUTTON			;$09 is 9 dec, W button
@@ -222,35 +224,51 @@ poll_input:
 	jsr move_up
         jmp end_poll
 poll_left:				
-	cmp #LEFT_BUTTON			;$11 is 17 dec, A button
+	cmp #LEFT_BUTTON		;$11 is 17 dec, A button
 	bne poll_down
+	
+	sta PLAYER_DIR
+	sta OBJECT_DIR
+
 	lda #$39
 	sta CUR_SPRITE
 	jsr move_left
         jmp end_poll
 poll_down:	
-	cmp #DOWN_BUTTON			;$29 is 41 dec, S button
+	cmp #DOWN_BUTTON		;$29 is 41 dec, S button
 	bne poll_right
+
+	sta PLAYER_DIR
+	sta OBJECT_DIR
+
 	lda #$38
 	sta CUR_SPRITE
 	jsr move_down
         jmp end_poll
 poll_right:	
-	cmp #RIGHT_BUTTON			;$12 is 18 dec, D button
+	cmp #RIGHT_BUTTON		;$12 is 18 dec, D button
 	bne poll_shoot
+
+	sta PLAYER_DIR
+	sta OBJECT_DIR
+
 	lda #$3A
 	sta CUR_SPRITE
 	jsr move_right
         jmp end_poll
 poll_shoot:
 	cmp #ENTER			;$0F is 15 dec, return button
-	bne idle 
+	bne idle
+
+	lda PLAYER_DIR
+	sta OBJECT_DIR
+
 	jsr shoot
 	jmp end_poll
 idle:
-	lda #NO_KEY
-	sta PLAYER_DIR
-	sta OBJECT_DIR
+;	lda #NO_KEY
+;	sta PLAYER_DIR
+;	sta OBJECT_DIR
 	lda #$20
 	sta CUR_SPRITE
 end_poll:
@@ -277,7 +295,7 @@ check_left:
         lda (SCR_PTR_LO),Y
 	jsr global_collision		;Check if it's bumping against edge of map
 	beq draw_left			;If it's 0 then keep going
-	inc SCR_PTR_LO		;If it's 1 then reset everything.
+	inc SCR_PTR_LO			;If it's 1 then reset everything.
 	jmp draw_left			;Draw it not moving.
 draw_left:
 	lda CUR_SPRITE			;Draw the guy
@@ -322,12 +340,12 @@ move_up:
 	lda SCR_PTR_LO			;Load low byte of current location
 	sec				;Set carry flag, carry clear means we borrowed
 	sbc #22				;Subtract by 22 because the space above is offset by 22 (22 cols)
-	sta SCR_PTR_LO		;Store new location in screen location
+	sta SCR_PTR_LO			;Store new location in screen location
 	bcs check_up			;Carry set means we didn't roll over
 	lda SCR_PTR_LO
 	cmp #$1e			;The carry was clear (we rolled over) so check if it's already in 1e
 	beq check_up			;If it's in $1exx then keep going (maybe we don't need this)
-	dec SCR_PTR_HI		;Otherwise it's in $1f so bring it to $1e
+	dec SCR_PTR_HI			;Otherwise it's in $1f so bring it to $1e
 check_up:
 	ldy #$00
 	lda (SCR_PTR_LO),y
@@ -363,7 +381,6 @@ move_down:				;Same as above but add 22 to move down
 	beq check_down
 	inc SCR_PTR_HI
 check_down:
-	; inc PLRY
         ldy #$99
         lda (SCR_PTR_LO),Y
 	jsr global_collision
@@ -390,11 +407,47 @@ shoot:
 	bne inc_numbullet
 	ldx #$00
 	stx numbullet
-	jmp inc_numbullet 
+	jmp add_bullet_start 
 inc_numbullet:
 	inc numbullet
-        rts
+add_bullet_start:
+	lda OBJECT_DIR
+	sta bullet_dir,X
 
+	cmp UP_BUTTON
+	bne bullet_left
+	lda #$2E			;note LDA BULLET AND STA CURSPRITE COULD GO INTO SUBROUTINE
+	sta CUR_SPRITE
+	jsr move_up
+	jmp shoot_end
+bullet_left:
+	cmp LEFT_BUTTON
+	bne bullet_down
+	lda #$2B
+	sta CUR_SPRITE
+	jsr move_left
+	jmp shoot_end
+bullet_down:
+	cmp DOWN_BUTTON
+	bne bullet_right
+	lda #$2E
+	sta CUR_SPRITE
+	jsr move_down
+	jmp shoot_end
+bullet_right:
+	cmp RIGHT_BUTTON
+	bne shoot_end
+	lda #$2B
+	sta CUR_SPRITE
+	jsr move_right
+shoot_end:
+;	lda CUR_SPRITE
+	sta bullet_sprite,X
+	lda SCR_PTR_LO
+	sta bullet_low,X
+	lda SCR_PTR_HI
+	sta bullet_high,X
+        rts
 
 global_collision:
 	cmp #$3F
