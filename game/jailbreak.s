@@ -3,7 +3,7 @@
 	processor 6502
 
 ;CONSTANTS
-MAX_BULLET = 8
+MAX_BULLET = $08
 MAX_ENEMIES = 8
 TRUE = 1
 FALSE = 0
@@ -32,10 +32,10 @@ PLRSTRT = $1ee6
 PLRCOLR = $96e6
 
 ;VRAM POINTERS
-SCR_PTR_LO = $01
-SCR_PTR_HI = $02
-COLOUR_PTR_LO = $03
-COLOUR_PTR_HI = $04
+SCR_PTR_LO = $00
+SCR_PTR_HI = $01
+COLOUR_PTR_LO = $02
+COLOUR_PTR_HI = $03
 
 ;PLAYER ATTRIBUTES
 PLAYER_X = $05
@@ -76,6 +76,7 @@ bulletaddr ds 2
 CUR_LEVEL = $72
 CUR_SPRITE = $73
 OBJECT_DIR = $74
+COUNTER = $75
 
 ;ORIGIN
 	org $1001
@@ -143,6 +144,8 @@ game_start:
 game_loop:
         jsr poll_input
 	jsr update_bullet
+	lda #10
+        jsr delay
 	jmp game_loop			;End of "game" loop
 
 draw_level:
@@ -215,12 +218,15 @@ screen_to_player:
 poll_input:
 	jsr player_to_screen
 	lda CURKEY			;CURKEY is $c5 in zero page
-;	sta PLAYER_DIR
-;	sta OBJECT_DIR
 	cmp #NO_KEY			;$40 is 64 dec, see pg 179 of VIC20 ref
 	beq end_poll_shoot		;64 is no button pressed
 	cmp #UP_BUTTON			;$09 is 9 dec, W button
 	bne poll_left
+
+	lda UP_BUTTON
+	sta PLAYER_DIR
+	sta OBJECT_DIR
+
 	lda #$37
 	sta CUR_SPRITE
 	jsr move_up
@@ -229,6 +235,7 @@ poll_left:
 	cmp #LEFT_BUTTON		;$11 is 17 dec, A button
 	bne poll_down
 	
+	lda LEFT_BUTTON
 	sta PLAYER_DIR
 	sta OBJECT_DIR
 
@@ -240,6 +247,7 @@ poll_down:
 	cmp #DOWN_BUTTON		;$29 is 41 dec, S button
 	bne poll_right
 
+	lda DOWN_BUTTON
 	sta PLAYER_DIR
 	sta OBJECT_DIR
 
@@ -251,6 +259,7 @@ poll_right:
 	cmp #RIGHT_BUTTON		;$12 is 18 dec, D button
 	bne poll_shoot
 
+	lda RIGHT_BUTTON
 	sta PLAYER_DIR
 	sta OBJECT_DIR
 
@@ -260,19 +269,19 @@ poll_right:
         jmp end_poll
 poll_shoot:
 	cmp #ENTER			;$0F is 15 dec, return button
-	bne idle
+	bne end_poll_shoot
 
 	lda PLAYER_DIR
 	sta OBJECT_DIR
 
 	jsr shoot
 	jmp end_poll_shoot
-idle:
-;	lda #NO_KEY
-;	sta PLAYER_DIR
-;	sta OBJECT_DIR
-	lda #$20
-	sta CUR_SPRITE
+; idle:
+; 	lda #NO_KEY
+; 	sta PLAYER_DIR
+; 	sta OBJECT_DIR
+; 	lda #$20
+; 	sta CUR_SPRITE
 end_poll:
 	lda CUR_SPRITE
 	sta PLAYER_SPRITE
@@ -306,8 +315,8 @@ draw_left:
 	lda CUR_SPRITE			;Draw the guy
 	sta (SCR_PTR_LO,X)
 end_move_left:
-        lda #60
-        jsr delay
+        ; lda #60
+        ; jsr delay
 	rts
 
 move_right:
@@ -336,8 +345,8 @@ draw_right:
 	lda CUR_SPRITE
 	sta (SCR_PTR_LO,X)
 end_move_right:
-        lda #60
-	jsr delay
+        ; lda #60
+	; jsr delay
         rts
 
 move_up:
@@ -354,7 +363,7 @@ move_up_skip_blank:
 	sbc #22				;Subtract by 22 because the space above is offset by 22 (22 cols)
 	sta SCR_PTR_LO			;Store new location in screen location
 	bcs check_up			;Carry set means we didn't roll over
-	lda SCR_PTR_LO
+	lda SCR_PTR_HI
 	cmp #$1e			;The carry was clear (we rolled over) so check if it's already in 1e
 	beq check_up			;If it's in $1exx then keep going (maybe we don't need this)
 	dec SCR_PTR_HI			;Otherwise it's in $1f so bring it to $1e
@@ -375,8 +384,8 @@ draw_up:
 	lda CUR_SPRITE			;Draw a red circle
 	sta (SCR_PTR_LO,X)
 end_move_up:
-	lda #60
-	jsr delay			;Delay to make it less fast
+	; lda #60
+	; jsr delay			;Delay to make it less fast
 	rts
 
 move_down:				;Same as above but add 22 to move down
@@ -411,14 +420,12 @@ draw_down:
         lda CUR_SPRITE
 	sta (SCR_PTR_LO,X)
 end_move_down:
-        lda #60
-	jsr delay
 	rts
 
 shoot:
 	ldx numbullet
 	cpx MAX_BULLET
-	bne add_bullet_start
+	bpl add_bullet_start
 	ldx #$00
 	stx numbullet
 add_bullet_start:
@@ -427,6 +434,9 @@ add_bullet_start:
 
 	cmp UP_BUTTON
 	bne bullet_left
+	lda UP_BUTTON
+	sta OBJECT_DIR
+	sta bullet_dir,X
 	lda #$2E			;note LDA BULLET AND STA CURSPRITE COULD GO INTO SUBROUTINE
 	sta CUR_SPRITE
 	jsr move_up_skip_blank
@@ -434,6 +444,9 @@ add_bullet_start:
 bullet_left:
 	cmp LEFT_BUTTON
 	bne bullet_down
+	lda LEFT_BUTTON
+	sta OBJECT_DIR
+	sta bullet_dir,X
 	lda #$2B
 	sta CUR_SPRITE
 	jsr move_left_skip_blank
@@ -441,6 +454,9 @@ bullet_left:
 bullet_down:
 	cmp DOWN_BUTTON
 	bne bullet_right
+	lda DOWN_BUTTON
+	sta OBJECT_DIR
+	sta bullet_dir,X
 	lda #$2E
 	sta CUR_SPRITE
 	jsr move_down_skip_blank
@@ -448,6 +464,9 @@ bullet_down:
 bullet_right:
 	cmp RIGHT_BUTTON
 	bne shoot_end
+	lda RIGHT_BUTTON
+	sta OBJECT_DIR
+	sta bullet_dir,X
 	lda #$2B
 	sta CUR_SPRITE
 	jsr move_right_skip_blank
@@ -463,6 +482,56 @@ shoot_end:
         rts
 
 update_bullet:
+	ldx #0
+
+update_bullet_loop:
+	cpx numbullet
+	beq update_bullet_end
+	cpx MAX_BULLET
+	beq update_bullet_end
+	stx COUNTER
+
+	lda bullet_high,X
+	sta SCR_PTR_LO
+
+	lda bullet_high,X
+	sta SCR_PTR_HI
+
+	lda bullet_sprite,X
+	sta CUR_SPRITE
+
+	lda bullet_dir,X
+	sta OBJECT_DIR
+
+	cmp UP_BUTTON
+	bne update_bullet_left
+	jsr move_up
+	jmp shoot_end
+update_bullet_left:
+	cmp LEFT_BUTTON
+	bne update_bullet_down
+	jsr move_left
+	jmp shoot_end
+update_bullet_down:
+	cmp DOWN_BUTTON
+	bne update_bullet_right
+	jsr move_down
+	jmp shoot_end
+update_bullet_right:
+	cmp RIGHT_BUTTON
+	bne update_bullet_inc
+	jsr move_right
+update_bullet_inc:
+	lda SCR_PTR_LO
+	sta bullet_low,X
+	lda SCR_PTR_HI
+	sta bullet_high,X
+
+	inc COUNTER
+	ldx COUNTER
+	jmp update_bullet_loop
+
+update_bullet_end:
 	rts
 
 global_collision:
