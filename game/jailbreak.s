@@ -38,20 +38,20 @@ COLOUR_PTR_LO = $02
 COLOUR_PTR_HI = $03
 
 ;PLAYER ATTRIBUTES
-PLAYER_X = $05
-PLAYER_Y = $06
-PLAYER_DIR = $07
-PLAYER_SPRITE = $08
-PLAYER_LIVES = $09
-PLAYER_ALIVE = $0A
-PLAYER_ADDR_LO = $0B
-PLAYER_ADDR_HI = $0C
-PLAYER_COLOUR_LO = $0D
-PLAYER_COLOUR_HI = $0E
+; PLAYER_X = $05
+; PLAYER_Y = $06
+PLAYER_DIR = $04
+PLAYER_SPRITE = $05
+PLAYER_LIVES = $06
+PLAYER_ALIVE = $07
+PLAYER_ADDR_LO = $08
+PLAYER_ADDR_HI = $09
+PLAYER_COLOUR_LO = $0A
+PLAYER_COLOUR_HI = $0B
 
 ;OBJECTS
 	SEG.U enemies
-	ORG $0F
+	ORG $0C
 num_enemies ds 1
 enemy_x ds 8
 enemy_y ds 8
@@ -61,7 +61,7 @@ enemy_dir ds 8
 enemyaddr ds 2
 
 	SEG.U bullets
-	ORG $3A
+	ORG $37
 numbullet ds 1
 bullet_sprite ds 8
 bullet_dir ds 8
@@ -70,13 +70,14 @@ bullet_y ds 8
 bullet_low ds 8
 bullet_high ds 8
 bullet_colour ds 8
+bullet_collide ds 8
 bulletaddr ds 2
 	SEG
 
-CUR_LEVEL = $72
-CUR_SPRITE = $73
-OBJECT_DIR = $74
-COUNTER = $75
+CUR_LEVEL = $7A
+CUR_SPRITE = $7B
+OBJECT_DIR = $7C
+COUNTER = $7D
 
 ;ORIGIN
 	org $1001
@@ -133,7 +134,7 @@ skip_inc_title_colour:
         jmp colour_title_loop
 main:
         lda CURKEY
-        cmp #ENTER
+        cmp #$20
         beq game_start
 	jmp main
 
@@ -223,7 +224,7 @@ poll_input:
 	cmp #UP_BUTTON			;$09 is 9 dec, W button
 	bne poll_left
 
-	lda UP_BUTTON
+	lda #UP_BUTTON
 	sta PLAYER_DIR
 	sta OBJECT_DIR
 
@@ -235,7 +236,7 @@ poll_left:
 	cmp #LEFT_BUTTON		;$11 is 17 dec, A button
 	bne poll_down
 	
-	lda LEFT_BUTTON
+	lda #LEFT_BUTTON
 	sta PLAYER_DIR
 	sta OBJECT_DIR
 
@@ -247,7 +248,7 @@ poll_down:
 	cmp #DOWN_BUTTON		;$29 is 41 dec, S button
 	bne poll_right
 
-	lda DOWN_BUTTON
+	lda #DOWN_BUTTON
 	sta PLAYER_DIR
 	sta OBJECT_DIR
 
@@ -259,7 +260,7 @@ poll_right:
 	cmp #RIGHT_BUTTON		;$12 is 18 dec, D button
 	bne poll_shoot
 
-	lda RIGHT_BUTTON
+	lda #RIGHT_BUTTON
 	sta PLAYER_DIR
 	sta OBJECT_DIR
 
@@ -424,7 +425,7 @@ end_move_down:
 
 shoot:
 	ldx numbullet
-	cpx MAX_BULLET
+	cpx #MAX_BULLET
 	bpl add_bullet_start
 	ldx #$00
 	stx numbullet
@@ -432,9 +433,9 @@ add_bullet_start:
 	lda OBJECT_DIR
 	sta bullet_dir,X
 
-	cmp UP_BUTTON
+	cmp #UP_BUTTON
 	bne bullet_left
-	lda UP_BUTTON
+	lda #UP_BUTTON
 	sta OBJECT_DIR
 	sta bullet_dir,X
 	lda #$2E			;note LDA BULLET AND STA CURSPRITE COULD GO INTO SUBROUTINE
@@ -442,9 +443,9 @@ add_bullet_start:
 	jsr move_up_skip_blank
 	jmp shoot_end
 bullet_left:
-	cmp LEFT_BUTTON
+	cmp #LEFT_BUTTON
 	bne bullet_down
-	lda LEFT_BUTTON
+	lda #LEFT_BUTTON
 	sta OBJECT_DIR
 	sta bullet_dir,X
 	lda #$2B
@@ -452,9 +453,9 @@ bullet_left:
 	jsr move_left_skip_blank
 	jmp shoot_end
 bullet_down:
-	cmp DOWN_BUTTON
+	cmp #DOWN_BUTTON
 	bne bullet_right
-	lda DOWN_BUTTON
+	lda #DOWN_BUTTON
 	sta OBJECT_DIR
 	sta bullet_dir,X
 	lda #$2E
@@ -462,9 +463,9 @@ bullet_down:
 	jsr move_down_skip_blank
 	jmp shoot_end
 bullet_right:
-	cmp RIGHT_BUTTON
+	cmp #RIGHT_BUTTON
 	bne shoot_end
-	lda RIGHT_BUTTON
+	lda #RIGHT_BUTTON
 	sta OBJECT_DIR
 	sta bullet_dir,X
 	lda #$2B
@@ -485,13 +486,13 @@ update_bullet:
 	ldx #0
 
 update_bullet_loop:
-	cpx numbullet
+	cpx #numbullet
 	beq update_bullet_end
-	cpx MAX_BULLET
+	cpx #MAX_BULLET
 	beq update_bullet_end
 	stx COUNTER
 
-	lda bullet_high,X
+	lda bullet_low,X
 	sta SCR_PTR_LO
 
 	lda bullet_high,X
@@ -503,22 +504,22 @@ update_bullet_loop:
 	lda bullet_dir,X
 	sta OBJECT_DIR
 
-	cmp UP_BUTTON
+	cmp #UP_BUTTON
 	bne update_bullet_left
 	jsr move_up
 	jmp shoot_end
 update_bullet_left:
-	cmp LEFT_BUTTON
+	cmp #LEFT_BUTTON
 	bne update_bullet_down
 	jsr move_left
 	jmp shoot_end
 update_bullet_down:
-	cmp DOWN_BUTTON
+	cmp #DOWN_BUTTON
 	bne update_bullet_right
 	jsr move_down
 	jmp shoot_end
 update_bullet_right:
-	cmp RIGHT_BUTTON
+	cmp #RIGHT_BUTTON
 	bne update_bullet_inc
 	jsr move_right
 update_bullet_inc:
