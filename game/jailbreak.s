@@ -220,7 +220,7 @@ poll_input:
 	jsr player_to_screen
 	lda CURKEY			;CURKEY is $c5 in zero page
 	cmp #NO_KEY			;$40 is 64 dec, see pg 179 of VIC20 ref
-	beq end_poll_shoot		;64 is no button pressed
+	beq idle ;end_poll_shoot		;64 is no button pressed
 	cmp #UP_BUTTON			;$09 is 9 dec, W button
 	bne poll_left
 
@@ -277,12 +277,13 @@ poll_shoot:
 
 	jsr shoot
 	jmp end_poll_shoot
-; idle:
-; 	lda #NO_KEY
-; 	sta PLAYER_DIR
-; 	sta OBJECT_DIR
-; 	lda #$20
-; 	sta CUR_SPRITE
+idle:
+	lda #NO_KEY
+	sta PLAYER_DIR
+	sta OBJECT_DIR
+	; lda #$20
+	; sta CUR_SPRITE
+	jmp end_poll_shoot
 end_poll:
 	lda CUR_SPRITE
 	sta PLAYER_SPRITE
@@ -486,9 +487,10 @@ update_bullet:
 	ldx #0
 
 update_bullet_loop:
-	cpx #numbullet
+	cpx numbullet
 	beq update_bullet_end
-	cpx #MAX_BULLET
+	bpl update_bullet_end
+	cpx #MAX_BULLET-1
 	beq update_bullet_end
 	stx COUNTER
 
@@ -507,17 +509,17 @@ update_bullet_loop:
 	cmp #UP_BUTTON
 	bne update_bullet_left
 	jsr move_up
-	jmp shoot_end
+	jmp update_bullet_inc
 update_bullet_left:
 	cmp #LEFT_BUTTON
 	bne update_bullet_down
 	jsr move_left
-	jmp shoot_end
+	jmp update_bullet_inc
 update_bullet_down:
 	cmp #DOWN_BUTTON
 	bne update_bullet_right
 	jsr move_down
-	jmp shoot_end
+	jmp update_bullet_inc
 update_bullet_right:
 	cmp #RIGHT_BUTTON
 	bne update_bullet_inc
