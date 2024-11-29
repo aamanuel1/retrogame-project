@@ -7,6 +7,7 @@ MAX_BULLET = $08
 MAX_ENEMIES = 8
 TRUE = 1
 FALSE = 0
+MAX_ENEMY_CYC = 10
 
 ;BUTTONS
 NO_KEY = $40
@@ -83,6 +84,12 @@ COLLISION_STATUS = $84
 SCRATCH_LO = $85
 SCRATCH_HI = $86
 REMAINDER = $87
+ENEMY_SHOOT_TIMER = $88
+ENEMY_MOVE_TIMER = $89
+ENEMY_CYCLE_CTR = $8A
+ENEMY_DIFF_X = $8B
+ENEMY_DIFF_Y = $8C
+ENEMY_COUNTER = $8D
 
 ;ORIGIN
 	org $1001
@@ -116,7 +123,6 @@ draw_title_loop:
 	bne draw_title_loop
 
 	inc SCR_PTR_HI
-	
 draw_title_loop_lower:
         lda #$20
         sta (SCR_PTR_LO),Y
@@ -148,10 +154,17 @@ game_start:
 	lda #$00
 	sta numbullet
 	sta num_enemies
+	sta ENEMY_CYCLE_CTR
         jsr draw_level
+	lda #$05
+	sta ENEMY_MOVE_TIMER
+	lda #$06
+	sta ENEMY_SHOOT_TIMER
 game_loop:
         jsr poll_input
 	jsr update_bullet
+	jsr enemy_hunt_player
+	jsr enemy_update_timer
 	lda #10
         jsr delay
 	jmp game_loop			;End of "game" loop
@@ -192,14 +205,12 @@ skip_store_player_2:
         iny
         inc SCR_PTR_LO
 	bne draw_level_loop_lower
-
         rts
 
 store_player:
         lda SCR_PTR_LO
         sta PLAYER_ADDR_LO
         lda SCR_PTR_HI
-        sta PLAYER_ADDR_HI
         sta PLAYER_ADDR_HI
         rts
 
@@ -341,8 +352,6 @@ draw_left:
 	lda CUR_SPRITE			;Draw the guy
 	sta (SCR_PTR_LO,X)
 end_move_left:
-        ; lda #60
-        ; jsr delay
 	rts
 
 move_right:
@@ -373,8 +382,6 @@ draw_right:
 	lda CUR_SPRITE
 	sta (SCR_PTR_LO,X)
 end_move_right:
-        ; lda #60
-	; jsr delay
         rts
 
 move_up:
@@ -414,8 +421,6 @@ draw_up:
 	lda CUR_SPRITE			;Draw a red circle
 	sta (SCR_PTR_LO,X)
 end_move_up:
-	; lda #60
-	; jsr delay			;Delay to make it less fast
 	rts
 
 move_down:				;Same as above but add 22 to move down
@@ -569,25 +574,75 @@ remove_bullet:
 	ldy #$00
 	sta bullet_sprite,X
 	sta (SCR_PTR_LO),Y
-
 inc_bullet_counter:
 	inc COUNTER
 	ldx COUNTER
 	jmp update_bullet_loop
-
 update_bullet_end:
 	rts
 
 enemy_hunt_player:
+	lda ENEMY_CYCLE_CTR
+	cmp ENEMY_MOVE_TIMER
+	bne enemy_hunt_player_ret
+	jsr player_to_screen
+	jsr screen_to_xy
+	stx PLAYER_X
+	sty PLAYER_Y
+	ldx #$00
+	stx ENEMY_COUNTER
+enemy_hunt_player_loop:
+	lda enemy_low,X
+	sta SCR_PTR_LO
+	lda enemy_high,X
+	sta SCR_PTR_HI
+	jsr screen_to_xy
+	txa
+	ldx ENEMY_COUNTER
+	sty enemy_x,X
+	sta enemy_y,X
+	
+	sec
+	sbc PLAYER_X
+	bcs enemy_move_left
+enemy_move_right:
+	lda #$3D
+	sta CUR_SPRITE
+	
+	lda #RIGHT_BUTTON
+	sta enemy_dir,X
+	sta OBJECT_DIR
+	jsr move_right
+	jmp enemy_move_y
+enemy_move_left:
+ 	lda #$3E
+	sta CUR_SPRITE
+	
+	lda #LEFT_BUTTON
+	sta enemy_dir,X
+	sta OBJECT_DIR
+	jsr move_right
+enemy_move_y:
+	
+enemy_hunt_player_ret:
 	rts
 
 enemy_shoot:
 	rts
 
+enemy_update_timer:
+	inc ENEMY_CYCLE_CTR
+	lda ENEMY_CYCLE_CTR
+	cmp #MAX_ENEMY_CYC
+	bmi enemy_update_ret		;IF ENEMY_CYCLE_CTR < MAX_ENEMY_CYC keep going
+	lda #00				;Otherwise reset counter
+	sta ENEMY_CYCLE_CTR
+enemy_update_ret:
+	rts
+
 global_collision:
 	cmp #$3F			;Compare with wall
 	beq collide			;X < 0 we collided with left edge
-	; sec
 	jsr screen_to_xy
 	cpx #0
 	bmi collide
@@ -597,17 +652,10 @@ global_collision:
 	bmi collide
 	cpy #22
 	bpl collide
-	; lda SCR_PTR_HI
-	; cmp #$1E
-	; bmi collide
-	; lda #$1F
-	; cmp SCR_PTR_HI
-	; bmi collide
 	lda #0				;Return false
 	jmp ret_global_collision
 collide:
 	lda #1				;Return true
-	; jmp ret_global_collision
 ret_global_collision:
 	rts				;Return result.
 
@@ -634,7 +682,6 @@ skip_xy_loop_dec_hi:
 	sta REMAINDER
 	iny
 	jmp screen_to_xy_loop
-
 screen_to_xy_ret:
 	pla
 	ldx REMAINDER
@@ -655,7 +702,7 @@ videosettings:
 	dc.b %10101110			;9003 $AE bit 7 is screen raster, bit 6-1  rows (default 23 max 23)
 					;bit 0 is character size 0 8x8 chars, 1 8x16 chars
 	dc.b %01111010			;9004 $7A 122 TV raster beam line
-	dc.b %11111110			;9005 $F0 bits 4-7 video address, bit 0-3 character memory loc (changed 0000 to 1111 $1c00).
+	dc.b %11111110			;9005 $F0 bits 4-7 video address, bit 0-3 character memory loc (changed 0000 to 1110 $1800).
 	dc.b %0				;9006 $0 Horizontal light pen location
 	dc.b %0				;9007 $0 Vertical light pen location
 	dc.b %11111111			;9008 $FF Paddle X Digitized variable resistance
