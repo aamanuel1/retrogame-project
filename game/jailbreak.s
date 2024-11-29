@@ -39,30 +39,31 @@ COLOUR_PTR_LO = $02
 COLOUR_PTR_HI = $03
 
 ;PLAYER ATTRIBUTES
-; PLAYER_X = $05
-; PLAYER_Y = $06
-PLAYER_DIR = $04
-PLAYER_SPRITE = $05
-PLAYER_LIVES = $06
-PLAYER_ALIVE = $07
-PLAYER_ADDR_LO = $08
-PLAYER_ADDR_HI = $09
-PLAYER_COLOUR_LO = $0A
-PLAYER_COLOUR_HI = $0B
+PLAYER_X = $04
+PLAYER_Y = $05
+PLAYER_DIR = $06
+PLAYER_SPRITE = $07
+PLAYER_LIVES = $08
+PLAYER_ALIVE = $09
+PLAYER_ADDR_LO = $0A
+PLAYER_ADDR_HI = $0B
+PLAYER_COLOUR_LO = $0C
+PLAYER_COLOUR_HI = $0D
 
 ;OBJECTS
 	SEG.U enemies
-	ORG $0C
+	ORG $0E
 num_enemies ds 1
+enemy_sprite ds 8
+enemy_dir ds 8
+enemy_x ds 8
+enemy_y ds 8
 enemy_low ds 8
 enemy_high ds 8
-enemy_sprite ds 8
 enemy_alive ds 8
-enemy_dir ds 8
-enemyaddr ds 2
 
 	SEG.U bullets
-	ORG $37
+	ORG $47
 numbullet ds 1
 bullet_sprite ds 8
 bullet_dir ds 8
@@ -72,14 +73,16 @@ bullet_low ds 8
 bullet_high ds 8
 bullet_colour ds 8
 bullet_collide ds 8
-bulletaddr ds 2
 	SEG
 
-CUR_LEVEL = $7A
-CUR_SPRITE = $7B
-OBJECT_DIR = $7C
-COUNTER = $7D
-COLLISION_STATUS = $7E
+CUR_LEVEL = $80
+CUR_SPRITE = $81
+OBJECT_DIR = $82
+COUNTER = $83
+COLLISION_STATUS = $84
+SCRATCH_LO = $85
+SCRATCH_HI = $86
+REMAINDER = $87
 
 ;ORIGIN
 	org $1001
@@ -334,6 +337,7 @@ check_left:
 	inc SCR_PTR_LO			;If it's 1 then reset everything.
 	jmp draw_left			;Draw it not moving.
 draw_left:
+        ldx #$00                        ;X will have the X value of the object from screen to xy
 	lda CUR_SPRITE			;Draw the guy
 	sta (SCR_PTR_LO,X)
 end_move_left:
@@ -365,6 +369,7 @@ check_right:
 	dec SCR_PTR_LO
 	jmp draw_right
 draw_right:
+        ldx #$00
 	lda CUR_SPRITE
 	sta (SCR_PTR_LO,X)
 end_move_right:
@@ -405,6 +410,7 @@ skip_inc_up:
 	sta SCR_PTR_LO
 	jmp draw_up			;Draw it not moving
 draw_up:
+        ldx #$00
 	lda CUR_SPRITE			;Draw a red circle
 	sta (SCR_PTR_LO,X)
 end_move_up:
@@ -442,6 +448,7 @@ skip_dec_down:
 	sta SCR_PTR_LO
 	jmp draw_down
 draw_down:
+        ldx #$00
         lda CUR_SPRITE
 	sta (SCR_PTR_LO,X)
 end_move_down:
@@ -580,28 +587,58 @@ enemy_shoot:
 global_collision:
 	cmp #$3F			;Compare with wall
 	beq collide			;X < 0 we collided with left edge
-	sec
-;	jsr PLOT
-;	cpx #0
-;	bmi collide
-;	cpx #22
-;	bpl collide
-;	cpy #0
-;	bmi collide
-;	cpy #23
-;	bpl collide
-;	lda SCR_PTR_HI
-;	cmp #$1E
-;	bmi collide
-;	cmp #$1F
-;	bpl collide
+	; sec
+	jsr screen_to_xy
+	cpx #0
+	bmi collide
+	cpx #21
+	bpl collide
+	cpy #0
+	bmi collide
+	cpy #22
+	bpl collide
+	; lda SCR_PTR_HI
+	; cmp #$1E
+	; bmi collide
+	; lda #$1F
+	; cmp SCR_PTR_HI
+	; bmi collide
 	lda #0				;Return false
 	jmp ret_global_collision
 collide:
 	lda #1				;Return true
-	jmp ret_global_collision
+	; jmp ret_global_collision
 ret_global_collision:
 	rts				;Return result.
+
+screen_to_xy:
+	lda SCR_PTR_HI
+	sta SCRATCH_HI
+	lda SCR_PTR_LO
+	sta SCRATCH_LO
+
+	ldx #$00
+	ldy #$00
+screen_to_xy_loop:
+	sec
+	sbc #22
+	sta SCRATCH_LO
+	bcs skip_xy_loop_dec_hi
+	pha				;Push A onto stack before incrementing the high byte or remainder will be lost
+	lda SCRATCH_HI
+	cmp #$1E
+	beq screen_to_xy_ret
+	dec SCRATCH_HI
+	pla
+skip_xy_loop_dec_hi:	
+	sta REMAINDER
+	iny
+	jmp screen_to_xy_loop
+
+screen_to_xy_ret:
+	pla
+	ldx REMAINDER
+	rts
 
 delay:
 	clc				;clear carry flag
