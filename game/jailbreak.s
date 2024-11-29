@@ -20,6 +20,7 @@ ENTER = $0F
 CHROUT = $ffd2
 GETIN = $ffe4
 SCNKEY = $ff9f
+PLOT = $fff0
 
 ;IMPORTANT ZERO PG ADDRESSESS
 CURKEY = $c5
@@ -53,8 +54,8 @@ PLAYER_COLOUR_HI = $0B
 	SEG.U enemies
 	ORG $0C
 num_enemies ds 1
-enemy_x ds 8
-enemy_y ds 8
+enemy_low ds 8
+enemy_high ds 8
 enemy_sprite ds 8
 enemy_alive ds 8
 enemy_dir ds 8
@@ -78,6 +79,7 @@ CUR_LEVEL = $7A
 CUR_SPRITE = $7B
 OBJECT_DIR = $7C
 COUNTER = $7D
+COLLISION_STATUS = $7E
 
 ;ORIGIN
 	org $1001
@@ -139,8 +141,10 @@ main:
 	jmp main
 
 game_start:
+	jsr load_screen_memory
 	lda #$00
 	sta numbullet
+	sta num_enemies
         jsr draw_level
 game_loop:
         jsr poll_input
@@ -156,16 +160,24 @@ draw_level:
 draw_level_loop:
 	lda level_1,Y
 	sta (SCR_PTR_LO,X)
-        cmp #$37
-        bne skip_store_player
+        cmp #$37			;Note this will stop working if not facing up.
+        beq player_found
+	cmp #$3C
+	beq enemy_found
+	jmp inc_level_draw
+enemy_found:
+	jsr store_enemy
+	jmp inc_level_draw
+player_found:
         jsr store_player
-skip_store_player:
+inc_level_draw:
         iny
 	inc SCR_PTR_LO
 	bne draw_level_loop
 
 	inc SCR_PTR_HI
         iny
+
 
 draw_level_loop_lower:
 	lda level_1+$FF,Y
@@ -189,6 +201,13 @@ store_player:
         rts
 
 store_enemy:
+	ldx num_enemies			;There's no protection against index overrun fyi.
+	lda SCR_PTR_LO
+	sta enemy_low,X
+	lda SCR_PTR_HI
+	sta enemy_high,X
+	inc num_enemies
+	ldx #$00			;Set to 0 so the indexed indirect works outside of function.
 	rts
 
 load_screen_memory:
@@ -220,7 +239,7 @@ poll_input:
 	jsr player_to_screen
 	lda CURKEY			;CURKEY is $c5 in zero page
 	cmp #NO_KEY			;$40 is 64 dec, see pg 179 of VIC20 ref
-	beq idle ;end_poll_shoot		;64 is no button pressed
+	beq end_poll_shoot;idle			;64 is no button pressed
 	cmp #UP_BUTTON			;$09 is 9 dec, W button
 	bne poll_left
 
@@ -310,6 +329,7 @@ check_left:
         ldy #$00
         lda (SCR_PTR_LO),Y
 	jsr global_collision		;Check if it's bumping against edge of map
+	sta COLLISION_STATUS
 	beq draw_left			;If it's 0 then keep going
 	inc SCR_PTR_LO			;If it's 1 then reset everything.
 	jmp draw_left			;Draw it not moving.
@@ -340,6 +360,7 @@ check_right:
         ldy #$00
         lda (SCR_PTR_LO),Y
 	jsr global_collision
+	sta COLLISION_STATUS
 	beq draw_right
 	dec SCR_PTR_LO
 	jmp draw_right
@@ -373,6 +394,7 @@ check_up:
 	ldy #$00
 	lda (SCR_PTR_LO),y
 	jsr global_collision		;Check if it's collided with the edge
+	sta COLLISION_STATUS
 	beq draw_up			;If false, continue drawing
 	lda SCR_PTR_LO			;If true then reset everything by adding it back or incrementing it back
 	clc
@@ -396,7 +418,7 @@ move_down:				;Same as above but add 22 to move down
 	sta (SCR_PTR_LO,X)
 move_down_skip_blank:
 	ldx #$00
-	lda SCR_PTR_LO
+	lda SCR_PTR_LO 
 	clc
 	adc #22
 	sta SCR_PTR_LO
@@ -409,6 +431,7 @@ check_down:
         ldy #$00
         lda (SCR_PTR_LO),Y
 	jsr global_collision
+	sta COLLISION_STATUS
 	beq draw_down
 	lda SCR_PTR_LO
 	sec
@@ -529,7 +552,18 @@ update_bullet_inc:
 	sta bullet_low,X
 	lda SCR_PTR_HI
 	sta bullet_high,X
+check_bullet_status:
+	lda COLLISION_STATUS
+	beq inc_bullet_counter
+remove_bullet:
+	lda #NO_KEY
+	sta bullet_dir,X
+	lda #32
+	ldy #$00
+	sta bullet_sprite,X
+	sta (SCR_PTR_LO),Y
 
+inc_bullet_counter:
 	inc COUNTER
 	ldx COUNTER
 	jmp update_bullet_loop
@@ -538,8 +572,23 @@ update_bullet_end:
 	rts
 
 global_collision:
-	cmp #$3F
+	cmp #$3F			;Compare with wall
 	beq collide			;X < 0 we collided with left edge
+	sec
+;	jsr PLOT
+;	cpx #0
+;	bmi collide
+;	cpx #22
+;	bpl collide
+;	cpy #0
+;	bmi collide
+;	cpy #23
+;	bpl collide
+;	lda SCR_PTR_HI
+;	cmp #$1E
+;	bmi collide
+;	cmp #$1F
+;	bpl collide
 	lda #0				;Return false
 	jmp ret_global_collision
 collide:
