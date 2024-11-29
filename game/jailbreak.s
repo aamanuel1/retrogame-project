@@ -571,6 +571,12 @@ inc_bullet_counter:
 update_bullet_end:
 	rts
 
+enemy_hunt_player:
+	rts
+
+enemy_shoot:
+	rts
+
 global_collision:
 	cmp #$3F			;Compare with wall
 	beq collide			;X < 0 we collided with left edge
