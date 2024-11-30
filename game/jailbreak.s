@@ -599,14 +599,14 @@ enemy_hunt_player_loop:
 	jsr screen_to_xy
 	txa
 	ldx ENEMY_COUNTER
-	sty enemy_x,X
-	sta enemy_y,X
+	sty enemy_y,X
+	sta enemy_x,X
 	
 	sec
 	sbc PLAYER_X
 	bcs enemy_move_left
 enemy_move_right:
-	lda #$3D
+	lda #$3E
 	sta CUR_SPRITE
 	
 	lda #RIGHT_BUTTON
@@ -615,15 +615,43 @@ enemy_move_right:
 	jsr move_right
 	jmp enemy_move_y
 enemy_move_left:
- 	lda #$3E
+ 	lda #$3D
 	sta CUR_SPRITE
 	
 	lda #LEFT_BUTTON
 	sta enemy_dir,X
 	sta OBJECT_DIR
-	jsr move_right
+	jsr move_left
 enemy_move_y:
+	lda enemy_y,X
 	
+	sec
+	sbc PLAYER_Y
+	bcc enemy_move_down
+enemy_move_up:
+	lda #$3B
+	sta CUR_SPRITE
+	
+	lda #UP_BUTTON
+	sta enemy_dir,X
+	sta OBJECT_DIR
+	jsr move_up
+	jmp enemy_store
+enemy_move_down:
+	lda #$3C
+	sta CUR_SPRITE
+
+	lda #DOWN_BUTTON
+	sta enemy_dir,X
+	sta OBJECT_DIR
+	jsr move_down
+enemy_store:
+	lda SCR_PTR_LO
+	sta enemy_low,X
+	lda SCR_PTR_HI
+	sta enemy_high,X
+	;jmp enemy_hunt_player_loop
+		
 enemy_hunt_player_ret:
 	rts
 
