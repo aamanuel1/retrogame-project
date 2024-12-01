@@ -165,6 +165,7 @@ game_loop:
         jsr poll_input
 	jsr update_bullet
 	jsr enemy_hunt_player
+	jsr enemy_shoot
 	jsr enemy_update_timer
 	lda #10
         jsr delay
@@ -652,11 +653,82 @@ enemy_store:
 	lda SCR_PTR_HI
 	sta enemy_high,X
 	;jmp enemy_hunt_player_loop
-		
 enemy_hunt_player_ret:
 	rts
 
 enemy_shoot:
+	lda ENEMY_CYCLE_CTR
+	cmp ENEMY_SHOOT_TIMER
+	bne enemy_shoot_ret
+
+	ldx #$00
+	stx ENEMY_COUNTER
+enemy_shoot_player_loop:
+	lda enemy_low,X
+	sta SCR_PTR_LO
+	lda enemy_high,X
+	sta SCR_PTR_HI
+	jsr screen_to_xy
+	txa
+	ldx ENEMY_COUNTER
+	sty enemy_y,X
+	sta enemy_x,X
+
+	sec
+	sbc PLAYER_X
+	sta ENEMY_DIFF_X
+	bcs enemy_shoot_pos_x
+enemy_shoot_neg_x:
+	tya 
+	sec
+	sbc PLAYER_Y
+	sta ENEMY_DIFF_Y
+	bcs enemy_shoot_neg_x_pos_y
+enemy_shoot_neg_x_neg_y:
+	lda ENEMY_DIFF_X
+	cmp ENEMY_DIFF_Y
+	bpl enemy_shoot_right
+	beq enemy_shoot_right
+	bmi enemy_shoot_up
+enemy_shoot_neg_x_pos_y:
+	lda ENEMY_DIFF_X
+	cmp ENEMY_DIFF_Y
+	bpl enemy_shoot_down
+	beq enemy_shoot_right
+	bmi enemy_shoot_right
+enemy_shoot_pos_x:
+	tya 
+	sec
+	sbc PLAYER_Y
+	sta ENEMY_DIFF_Y
+	bcs enemy_shoot_pos_x_pos_y
+enemy_shoot_pos_x_neg_y:
+	lda ENEMY_DIFF_X
+	cmp ENEMY_DIFF_Y
+	bpl enemy_shoot_left
+	beq enemy_shoot_left
+	bmi enemy_shoot_up
+enemy_shoot_pos_x_pos_y:
+	lda ENEMY_DIFF_X
+	cmp ENEMY_DIFF_Y
+	bpl enemy_shoot_down
+	beq enemy_shoot_left
+	bmi enemy_shoot_left
+enemy_shoot_right:
+	lda #RIGHT_BUTTON
+	jmp enemy_shoot_dir_store
+enemy_shoot_up:
+	lda #UP_BUTTON
+	jmp enemy_shoot_dir_store
+enemy_shoot_down:
+	lda #DOWN_BUTTON
+	jmp enemy_shoot_dir_store
+enemy_shoot_left:
+	lda #LEFT_BUTTON
+enemy_shoot_dir_store:
+	sta OBJECT_DIR
+	jsr shoot
+enemy_shoot_ret:
 	rts
 
 enemy_update_timer:
@@ -795,7 +867,7 @@ level_1:
 	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $20, $20, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
 
 	org $1C00
-; Character bitmap definitions only 128 chrs, 63 left to 1dff.
+; Character bitmap definitions only 63 chars, reverse mode set to retain the base alphanum set because the vic chip loops around
 	dc.b	$3C, $7C, $7C, $7C, $7C, $7C, $7C, $7C
 	dc.b	$00, $15, $15, $15, $15, $15, $00, $00
 	dc.b	$14, $14, $14, $15, $15, $15, $14, $14
