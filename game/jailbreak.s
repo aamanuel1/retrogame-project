@@ -463,8 +463,8 @@ end_move_down:
 
 shoot:
 	ldx numbullet
-	cpx #MAX_BULLET
-	bpl add_bullet_start
+	cpx #MAX_BULLET-1
+	bne add_bullet_start
 	ldx #$00
 	stx numbullet
 add_bullet_start:
@@ -510,7 +510,7 @@ bullet_right:
 	sta CUR_SPRITE
 	jsr move_right_skip_blank
 shoot_end:
-	ldx numbullet
+	ldx numbullet			;I guess after a jsr I don't know what the X will be
 	lda CUR_SPRITE
 	sta bullet_sprite,X
 	lda SCR_PTR_LO
@@ -562,6 +562,7 @@ update_bullet_right:
 	bne update_bullet_inc
 	jsr move_right
 update_bullet_inc:
+	ldx COUNTER
 	lda SCR_PTR_LO
 	sta bullet_low,X
 	lda SCR_PTR_HI
