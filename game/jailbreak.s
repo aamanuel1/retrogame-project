@@ -72,7 +72,7 @@ bullet_x ds 8
 bullet_y ds 8
 bullet_low ds 8
 bullet_high ds 8
-bullet_colour ds 8
+bullet_colour ds 8			;To delete if needed
 bullet_collide ds 8
 	SEG
 
@@ -90,6 +90,8 @@ ENEMY_CYCLE_CTR = $8A
 ENEMY_DIFF_X = $8B
 ENEMY_DIFF_Y = $8C
 ENEMY_COUNTER = $8D
+COLL_PTR_LO = $8E
+COLL_PTR_HI = $8F
 
 ;ORIGIN
 	org $1001
@@ -325,6 +327,9 @@ end_poll:
 	jsr screen_to_player
 end_poll_shoot:
         rts
+
+check_player_status:
+	rts
 
 move_left:
         ldx #$00
@@ -742,9 +747,32 @@ enemy_update_timer:
 enemy_update_ret:
 	rts
 
+check_enemy_status:
+	
+	rts
+
 global_collision:
 	cmp #$3F			;Compare with wall
 	beq collide			;X < 0 we collided with left edge
+bullet_collision_check:
+	cmp #$33
+	bmi enemy_collision_check
+	cmp #$34
+	bpl enemy_collision_check
+	jmp bullet_collided
+enemy_collision_check:
+	cmp #$3B
+	bmi player_collision_check
+	cmp #$3E
+	bpl player_collision_check
+	jmp enemy_collide
+player_collision_check:
+	cmp #$37
+	bmi global_bounds
+	cmp #$3A
+	bpl global_bounds
+	jmp player_collide
+global_bounds:
 	jsr screen_to_xy
 	cpx #0
 	bmi collide
@@ -756,8 +784,24 @@ global_collision:
 	bpl collide
 	lda #0				;Return false
 	jmp ret_global_collision
+bullet_collided:
+	lda #4
+	jmp store_collision_stats
+enemy_collide:
+	lda #3
+	jmp store_collision_stats
+player_collide:
+	lda #2
+	jmp store_collision_stats
 collide:
 	lda #1				;Return true
+store_collision_stats:
+	pha				;Push the flag onto the stack or you'll be stuck
+	lda SCR_PTR_LO
+	sta COLL_PTR_LO
+	lda SCR_PTR_HI
+	sta COLL_PTR_HI
+	pla				;Pull it before returning.
 ret_global_collision:
 	rts				;Return result.
 
