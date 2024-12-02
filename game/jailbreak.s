@@ -643,6 +643,8 @@ enemy_hunt_player:
 	ldx #$00
 	stx ENEMY_COUNTER
 enemy_hunt_player_loop:
+	lda enemy_alive,X
+	beq enemy_hunt_player_ret
 	lda enemy_low,X
 	sta SCR_PTR_LO
 	lda enemy_high,X
@@ -711,9 +713,14 @@ enemy_shoot:
 	cmp ENEMY_SHOOT_TIMER
 	bne enemy_shoot_ret
 
+	lda num_enemies
+	beq enemy_shoot_ret
+
 	ldx #$00
 	stx ENEMY_COUNTER
 enemy_shoot_player_loop:
+	lda enemy_alive,X
+	beq enemy_shoot_ret
 	lda enemy_low,X
 	sta SCR_PTR_LO
 	lda enemy_high,X
@@ -826,9 +833,9 @@ remove_dead_enemies_loop:
 	ldy #$00
 	sta enemy_sprite,X
 	sta (SCR_PTR_LO),Y
-	dec num_enemies
+	dec num_enemies			;There might be an issue with out-of-order removal
 skip_remove_enemy:
-;	jsr remove_dead_enemies_loop
+;	jmp remove_dead_enemies_loop
 remove_dead_enemies_ret:
 	rts
 
