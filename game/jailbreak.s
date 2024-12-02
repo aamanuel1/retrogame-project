@@ -588,6 +588,12 @@ update_bullet_inc:
 	sta bullet_low,X
 	lda SCR_PTR_HI
 	sta bullet_high,X
+	stx COUNTER					;Probably should rename to bullet counter
+	jsr check_bullet_status
+	jmp update_bullet_loop
+update_bullet_end:
+	rts
+
 check_bullet_status:
 	lda COLLISION_STATUS
 	beq inc_bullet_counter
@@ -601,8 +607,19 @@ check_bullet_status:
 	sta PLAYER_ALIVE
 	jmp remove_bullet
 enemy_bullet_crosscheck:
-
+	ldx #$00
+	stx ENEMY_COUNTER 
+enemy_bullet_crosscheck_loop:
+	cmp enemy_low,X
+	bne remove_bullet
+	lda COLL_PTR_HI
+	cmp PLAYER_ADDR_HI
+	bne remove_bullet
+	lda #FALSE
+	sta enemy_alive,X
+;	jmp enemy_bullet_crosscheck_loop
 remove_bullet:
+	ldx COUNTER
 	lda #NO_KEY
 	sta bullet_dir,X
 	lda #32
@@ -612,8 +629,6 @@ remove_bullet:
 inc_bullet_counter:
 	inc COUNTER
 	ldx COUNTER
-	jmp update_bullet_loop
-update_bullet_end:
 	rts
 
 enemy_hunt_player:
