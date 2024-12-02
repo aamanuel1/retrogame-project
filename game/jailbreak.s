@@ -610,10 +610,11 @@ enemy_bullet_crosscheck:
 	ldx #$00
 	stx ENEMY_COUNTER 
 enemy_bullet_crosscheck_loop:
+	lda COLL_PTR_LO
 	cmp enemy_low,X
 	bne remove_bullet
 	lda COLL_PTR_HI
-	cmp PLAYER_ADDR_HI
+	cmp enemy_high,X
 	bne remove_bullet
 	lda #FALSE
 	sta enemy_alive,X
@@ -627,7 +628,7 @@ remove_bullet:
 	sta bullet_sprite,X
 	sta (SCR_PTR_LO),Y
 inc_bullet_counter:
-	inc COUNTER
+	inc COUNTER					;TODO refactor the counter so this can be a reusable function
 	ldx COUNTER
 	rts
 
