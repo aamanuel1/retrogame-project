@@ -161,7 +161,7 @@ game_start:
         jsr draw_level
 	lda #$05
 	sta ENEMY_MOVE_TIMER
-	lda #$06
+	lda #$08
 	sta ENEMY_SHOOT_TIMER
 	lda #TRUE
 	sta PLAYER_ALIVE
@@ -172,6 +172,7 @@ game_loop:
 	jsr update_bullet
 	jsr enemy_hunt_player
 	jsr enemy_shoot
+	jsr remove_dead_enemies
 	jsr enemy_update_timer
 	lda #10
         jsr delay
@@ -228,6 +229,8 @@ store_enemy:
 	sta enemy_low,X
 	lda SCR_PTR_HI
 	sta enemy_high,X
+	lda #TRUE
+	sta enemy_alive,X
 	inc num_enemies
 	ldx #$00			;Set to 0 so the indexed indirect works outside of function.
 	rts
@@ -588,6 +591,17 @@ update_bullet_inc:
 check_bullet_status:
 	lda COLLISION_STATUS
 	beq inc_bullet_counter
+	lda COLL_PTR_LO
+	cmp PLAYER_ADDR_LO
+	bne enemy_bullet_crosscheck
+	lda COLL_PTR_HI
+	cmp PLAYER_ADDR_HI
+	bne enemy_bullet_crosscheck
+	lda #FALSE
+	sta PLAYER_ALIVE
+	jmp remove_bullet
+enemy_bullet_crosscheck:
+
 remove_bullet:
 	lda #NO_KEY
 	sta bullet_dir,X
@@ -667,11 +681,12 @@ enemy_move_down:
 	sta OBJECT_DIR
 	jsr move_down
 enemy_store:
+	jsr check_enemy_status 
 	lda SCR_PTR_LO
 	sta enemy_low,X
 	lda SCR_PTR_HI
 	sta enemy_high,X
-	;jmp enemy_hunt_player_loop
+	;jmp enemy_hunt_player_loop			;Have to think about how this will work with more than one enemy.
 enemy_hunt_player_ret:
 	rts
 
@@ -762,6 +777,43 @@ enemy_update_ret:
 
 check_enemy_status:
 	lda COLLISION_STATUS
+	cmp #4
+	beq kill_enemy_flag
+	cmp #3
+	beq check_enemy_status_ret
+	cmp #2
+	beq enemy_kill_player_flag
+	jmp check_enemy_status_ret
+kill_enemy_flag:
+	lda #FALSE
+	sta enemy_alive,X		;This should still have the X from the counter. Hopefully.
+	jmp check_enemy_status_ret
+enemy_kill_player_flag:
+	lda #FALSE
+	sta PLAYER_ALIVE
+check_enemy_status_ret:
+	rts
+
+remove_dead_enemies:
+	ldx #$00
+	stx ENEMY_COUNTER
+remove_dead_enemies_loop:
+	lda enemy_alive,X
+	bne skip_remove_enemy
+	lda #NO_KEY
+	sta enemy_dir,X
+	lda enemy_low,X
+	sta SCR_PTR_LO
+	lda enemy_high,X
+	sta SCR_PTR_HI
+	lda #32
+	ldy #$00
+	sta enemy_sprite,X
+	sta (SCR_PTR_LO),Y
+	dec num_enemies
+skip_remove_enemy:
+;	jsr remove_dead_enemies_loop
+remove_dead_enemies_ret:
 	rts
 
 global_collision:
