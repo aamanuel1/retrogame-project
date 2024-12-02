@@ -163,8 +163,12 @@ game_start:
 	sta ENEMY_MOVE_TIMER
 	lda #$06
 	sta ENEMY_SHOOT_TIMER
+	lda #TRUE
+	sta PLAYER_ALIVE
 game_loop:
         jsr poll_input
+	lda PLAYER_ALIVE
+	beq draw_title
 	jsr update_bullet
 	jsr enemy_hunt_player
 	jsr enemy_shoot
@@ -325,10 +329,19 @@ end_poll:
 	lda CUR_SPRITE
 	sta PLAYER_SPRITE
 	jsr screen_to_player
+	jsr check_player_status
 end_poll_shoot:
         rts
 
-check_player_status:
+check_player_status:			;TODO combine with end_poll if it works to save a jsr and rts.
+	lda COLLISION_STATUS
+	cmp #2
+	bpl kill_player_flag
+	jmp check_player_status_ret
+kill_player_flag:
+	lda #FALSE
+	sta PLAYER_ALIVE
+check_player_status_ret:
 	rts
 
 move_left:
@@ -748,7 +761,7 @@ enemy_update_ret:
 	rts
 
 check_enemy_status:
-	
+	lda COLLISION_STATUS
 	rts
 
 global_collision:
