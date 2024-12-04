@@ -662,7 +662,9 @@ remove_bullet_func:
 enemy_hunt_player:
 	lda ENEMY_CYCLE_CTR
 	cmp ENEMY_MOVE_TIMER
-	bne enemy_hunt_player_ret
+	beq enemy_hunt_player_continue
+	jmp enemy_hunt_player_ret
+enemy_hunt_player_continue:
 	jsr player_to_screen
 	jsr screen_to_xy
 	stx PLAYER_X
@@ -670,8 +672,15 @@ enemy_hunt_player:
 	ldx #$00
 	stx ENEMY_COUNTER
 enemy_hunt_player_loop:
-	lda enemy_alive,X
+	ldx ENEMY_COUNTER
+	cpx #MAX_ENEMIES
 	beq enemy_hunt_player_ret
+
+	lda enemy_alive,X
+	beq skip_enemy_move
+	cmp #$01				;For some strange reason zpg doesn't always init to 0 in a seg.u
+	bne skip_enemy_move
+
 	lda enemy_low,X
 	sta SCR_PTR_LO
 	lda enemy_high,X
@@ -703,6 +712,7 @@ enemy_move_left:
 	sta OBJECT_DIR
 	jsr move_left
 enemy_move_y:
+	ldx ENEMY_COUNTER
 	lda enemy_y,X
 	
 	sec
@@ -726,12 +736,16 @@ enemy_move_down:
 	sta OBJECT_DIR
 	jsr move_down
 enemy_store:
-	jsr check_enemy_status 
+	jsr check_enemy_status
+	ldx ENEMY_COUNTER 
 	lda SCR_PTR_LO
 	sta enemy_low,X
 	lda SCR_PTR_HI
 	sta enemy_high,X
-	;jmp enemy_hunt_player_loop			;Have to think about how this will work with more than one enemy.
+skip_enemy_move:
+	inx
+	stx ENEMY_COUNTER
+	jmp enemy_hunt_player_loop			;Have to think about how this will work with more than one enemy.
 enemy_hunt_player_ret:
 	rts
 
@@ -1029,7 +1043,7 @@ level_1:
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3C, $20, $3C, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3C, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
