@@ -821,6 +821,22 @@ remove_dead_enemies:
 	ldx #$00
 	stx ENEMY_COUNTER
 remove_dead_enemies_loop:
+	; cpx MAX_ENEMIES
+	; beq remove_dead_enemies_ret
+
+	ldy #$00 			;This section needed to remove the dead enemy, need to refactor.
+	lda enemy_low,X
+	sta SCR_PTR_LO
+	lda enemy_high,X
+	sta SCR_PTR_HI
+	lda (SCR_PTR_LO),Y
+	cmp #$20
+	beq skip_remove_enemy
+	cmp #$3B
+	bmi skip_remove_enemy
+	cmp #$3E
+	bpl skip_remove_enemy
+
 	lda enemy_alive,X
 	bne skip_remove_enemy
 	lda #NO_KEY
@@ -831,11 +847,16 @@ remove_dead_enemies_loop:
 	sta SCR_PTR_HI
 	lda #32
 	ldy #$00
-	sta enemy_sprite,X
+	; sta enemy_sprite,X
 	sta (SCR_PTR_LO),Y
+	; lda #$00
+	; sta enemy_low,X
+	; sta enemy_high,X
 	dec num_enemies			;There might be an issue with out-of-order removal
 skip_remove_enemy:
-;	jmp remove_dead_enemies_loop
+	; inx
+	; stx ENEMY_COUNTER
+	; jmp remove_dead_enemies_loop
 remove_dead_enemies_ret:
 	rts
 
