@@ -557,7 +557,7 @@ update_bullet:
 	ldx #0
 
 update_bullet_loop:
-	; cpx numbullet
+	; cpx numbullet					;Note remove later, was causing the bullet is stuck issue
 	; beq update_bullet_end
 	; bpl update_bullet_end
 	cpx #MAX_BULLET
@@ -640,9 +640,9 @@ enemy_bullet_crosscheck_inc:
 	jmp enemy_bullet_crosscheck_loop
 remove_bullet:
 	ldx COUNTER
-	jsr remove_bullet_func
+	jsr remove_bullet_func				;Refactored remove_bullet that was here to be its own standalone function.
 inc_bullet_counter:
-	inc COUNTER					;TODO refactor the counter so this can be a reusable function
+	inc COUNTER
 	ldx COUNTER
 	rts
 
@@ -652,7 +652,7 @@ remove_bullet_func:
 	lda #32
 	ldy #$00
 	sta bullet_sprite,X
-	; lda bullet_low,X
+	; lda bullet_low,X				;Placing the bullet load here was causing weird stuff to happen
 	; sta SCR_PTR_LO
 	; lda bullet_high,X
 	; sta SCR_PTR_HI
