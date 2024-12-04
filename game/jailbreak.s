@@ -174,7 +174,7 @@ game_loop:
 	jsr update_bullet
 	jsr remove_dead_enemies
 	jsr enemy_update_timer
-	lda #5
+	lda #8
         jsr delay
 	jmp game_loop			;End of "game" loop
 
@@ -489,6 +489,18 @@ shoot:
 	ldx #$00
 	stx numbullet
 add_bullet_start:
+	lda bullet_dir,X
+	cmp #NO_KEY
+	beq add_bullet_continue
+	cmp #$00
+	beq add_bullet_continue
+	lda bullet_low,X
+	sta SCR_PTR_LO
+	lda bullet_high,X
+	sta SCR_PTR_HI
+	jsr remove_bullet_func
+
+add_bullet_continue:
 	lda OBJECT_DIR
 	sta bullet_dir,X
 
@@ -545,9 +557,9 @@ update_bullet:
 	ldx #0
 
 update_bullet_loop:
-	cpx numbullet
-	beq update_bullet_end
-	bpl update_bullet_end
+	; cpx numbullet
+	; beq update_bullet_end
+	; bpl update_bullet_end
 	cpx #MAX_BULLET
 	beq update_bullet_end
 	stx COUNTER
@@ -628,15 +640,23 @@ enemy_bullet_crosscheck_inc:
 	jmp enemy_bullet_crosscheck_loop
 remove_bullet:
 	ldx COUNTER
+	jsr remove_bullet_func
+inc_bullet_counter:
+	inc COUNTER					;TODO refactor the counter so this can be a reusable function
+	ldx COUNTER
+	rts
+
+remove_bullet_func:
 	lda #NO_KEY
 	sta bullet_dir,X
 	lda #32
 	ldy #$00
 	sta bullet_sprite,X
+	; lda bullet_low,X
+	; sta SCR_PTR_LO
+	; lda bullet_high,X
+	; sta SCR_PTR_HI
 	sta (SCR_PTR_LO),Y
-inc_bullet_counter:
-	inc COUNTER					;TODO refactor the counter so this can be a reusable function
-	ldx COUNTER
 	rts
 
 enemy_hunt_player:
