@@ -92,6 +92,10 @@ ENEMY_DIFF_Y = $82
 ENEMY_COUNTER = $83
 COLL_PTR_LO = $84
 COLL_PTR_HI = $85
+LEVEL_CHANGE = $86
+LEVEL_OFFSET = $87
+LEVEL_ADDR_HI = $88
+LEVEL_ADDR_LO = $89
 
 ;ORIGIN
 	org $1001
@@ -158,6 +162,12 @@ game_start:
 	sta numbullet
 	sta num_enemies
 	sta ENEMY_CYCLE_CTR
+	lda #<level_1
+	sta LEVEL_ADDR_LO
+	sta draw_level_loop+1		;smod code example for changing the level.
+	lda #>level_1
+	sta LEVEL_ADDR_HI
+	sta draw_level_loop+2
         jsr draw_level
 	lda #$05
 	sta ENEMY_MOVE_TIMER
@@ -165,10 +175,17 @@ game_start:
 	sta ENEMY_SHOOT_TIMER
 	lda #TRUE
 	sta PLAYER_ALIVE
+	lda #FALSE
+	sta LEVEL_CHANGE
 game_loop:
         jsr poll_input
 	lda PLAYER_ALIVE
 	beq draw_title
+	lda LEVEL_CHANGE
+	beq continue_game_loop
+	jsr change_level		;We'll have to go to game loop so no jsr
+	jmp game_loop			;Start from scratch.
+continue_game_loop:
 	jsr enemy_hunt_player
 	jsr enemy_shoot
 	jsr update_bullet
@@ -202,8 +219,6 @@ inc_level_draw:
 
 	inc SCR_PTR_HI
         iny
-
-
 draw_level_loop_lower:
 	lda level_1+$FF,Y
 	sta (SCR_PTR_LO,X)
@@ -338,13 +353,30 @@ end_poll_shoot:
 
 check_player_status:			;TODO combine with end_poll if it works to save a jsr and rts.
 	lda COLLISION_STATUS
+	cmp #5
+	beq level_transition
 	cmp #2
 	bpl kill_player_flag
 	jmp check_player_status_ret
 kill_player_flag:
 	lda #FALSE
 	sta PLAYER_ALIVE
+level_transition:
+	lda #TRUE
+	sta LEVEL_CHANGE
 check_player_status_ret:
+	rts
+
+change_level:
+	lda #<level_2
+	sta LEVEL_ADDR_LO
+	sta draw_level_loop+1		;smod code example for changing the level.
+	lda #>level_2
+	sta LEVEL_ADDR_HI
+	sta draw_level_loop+2
+        jsr draw_level
+	lda #FALSE
+	sta LEVEL_CHANGE
 	rts
 
 move_left:
@@ -905,6 +937,8 @@ remove_dead_enemies_ret:
 global_collision:
 	cmp #$3F			;Compare with wall
 	beq collide			;X < 0 we collided with left edge
+	cmp #$2F			;Compare with level change trigger
+	beq level_change
 bullet_collision_check:
 	cmp #$33
 	bmi enemy_collision_check
@@ -935,6 +969,9 @@ global_bounds:
 	bpl collide
 	lda #0				;Return false
 	jmp ret_global_collision
+level_change:
+	lda #5
+	jmp store_collision_stats
 bullet_collided:
 	lda #4
 	jmp store_collision_stats
@@ -1038,7 +1075,7 @@ title_chr:
 	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
 
 level_1:
-    	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $20, $20, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
+    	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
@@ -1062,6 +1099,31 @@ level_1:
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $37, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
 
+level_2:
+    dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $3C, $20, $20, $3C, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $3F, $3F, $3F, $3F, $3F, $3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $37, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
+	
 	org $1C00
 ; Character bitmap definitions only 63 chars, reverse mode set to retain the base alphanum set because the vic chip loops around
 	dc.b	$3C, $7C, $7C, $7C, $7C, $7C, $7C, $7C
