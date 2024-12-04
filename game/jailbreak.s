@@ -169,9 +169,9 @@ game_loop:
         jsr poll_input
 	lda PLAYER_ALIVE
 	beq draw_title
-	jsr update_bullet
 	jsr enemy_hunt_player
 	jsr enemy_shoot
+	jsr update_bullet
 	jsr remove_dead_enemies
 	jsr enemy_update_timer
 	lda #10
@@ -610,15 +610,22 @@ enemy_bullet_crosscheck:
 	ldx #$00
 	stx ENEMY_COUNTER 
 enemy_bullet_crosscheck_loop:
+	cpx #MAX_ENEMIES				;NOTE problem with enemy collision when this was refactored.
+	beq remove_bullet				;Above is because I forgot what immediate was.
 	lda COLL_PTR_LO
 	cmp enemy_low,X
-	bne remove_bullet
+	bne enemy_bullet_crosscheck_inc
 	lda COLL_PTR_HI
 	cmp enemy_high,X
-	bne remove_bullet
+	bne enemy_bullet_crosscheck_inc
 	lda #FALSE
 	sta enemy_alive,X
-;	jmp enemy_bullet_crosscheck_loop
+	jmp remove_bullet				;This somehow makes it so the bullet doesn't kill the enemy.
+enemy_bullet_crosscheck_inc:
+	inx
+	stx ENEMY_COUNTER
+	ldx ENEMY_COUNTER
+	jmp enemy_bullet_crosscheck_loop
 remove_bullet:
 	ldx COUNTER
 	lda #NO_KEY
@@ -821,8 +828,8 @@ remove_dead_enemies:
 	ldx #$00
 	stx ENEMY_COUNTER
 remove_dead_enemies_loop:
-	; cpx MAX_ENEMIES
-	; beq remove_dead_enemies_ret
+	cpx #MAX_ENEMIES
+	beq remove_dead_enemies_ret
 
 	ldy #$00 			;This section needed to remove the dead enemy, need to refactor.
 	lda enemy_low,X
@@ -854,9 +861,10 @@ remove_dead_enemies_loop:
 	; sta enemy_high,X
 	dec num_enemies			;There might be an issue with out-of-order removal
 skip_remove_enemy:
-	; inx
-	; stx ENEMY_COUNTER
-	; jmp remove_dead_enemies_loop
+	inx
+	stx ENEMY_COUNTER
+	jmp remove_dead_enemies_loop
+
 remove_dead_enemies_ret:
 	rts
 
