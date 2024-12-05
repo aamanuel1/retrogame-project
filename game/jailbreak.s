@@ -16,6 +16,7 @@ LEFT_BUTTON = $11
 DOWN_BUTTON = $29
 RIGHT_BUTTON = $12
 ENTER = $0F
+SPACE = $20
 
 ; KERNAL ADDRESSES
 CHROUT = $ffd2
@@ -109,6 +110,7 @@ nextstmt
 
 ;PROGRAM START
 init:					;Initialize video settings on VIC chip
+	jsr clearscreen
 	ldy #16				;Iterator
 init_loop:
 	dey
@@ -180,7 +182,9 @@ game_start:
 game_loop:
         jsr poll_input
 	lda PLAYER_ALIVE
-	beq draw_title
+	bne player_still_alive
+	jmp game_over
+player_still_alive
 	lda LEVEL_CHANGE
 	beq continue_game_loop
 	jsr change_level		;We'll have to go to game loop so no jsr
@@ -1029,6 +1033,36 @@ delay_loop:
 	bne delay_loop			
 	rts
 
+clearscreen:
+	jsr load_screen_memory
+	ldy #$00
+clearscreen_loop:
+	lda #SPACE
+	sta (SCR_PTR_LO),Y
+	iny
+	bne clearscreen_loop
+	lda SCR_PTR_HI
+	cmp #$1F
+	beq clearscreen_ret
+	inc SCR_PTR_HI
+	jmp clearscreen_loop
+clearscreen_ret:
+	rts
+
+game_over:
+	jsr player_to_screen
+	lda #$1F
+	ldy #$00
+	sta (SCR_PTR_LO),Y
+game_over_loop:
+	lda CURKEY
+	cmp #SPACE
+	bne game_over_loop
+	jsr clearscreen
+	lda #60
+	jsr delay
+	jmp draw_title
+
 videosettings:
 	dc.b %00001100			;9000 $05 Interlace off, screen origin horiz 12  (def 5, lower value left
 	dc.b %00011110			;9001 $19 Screen origin vertical 5, lower value up by 2pix to 1
@@ -1100,7 +1134,7 @@ level_1:
 	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
 
 level_2:
-    dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
+    	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
@@ -1190,7 +1224,7 @@ level_2:
 	dc.b	$14, $3C, $14, $54, $24, $14, $14, $14
 	dc.b	$14, $3C, $14, $15, $1C, $14, $14, $14
 	dc.b	$FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-	dc.b	$00, $00, $00, $00, $00, $00, $00, $00
+	; dc.b	$00, $00, $00, $00, $00, $00, $00, $00
 	; dc.b	$3C, $7C, $7C, $7C, $7C, $7C, $7C, $7C
 	; dc.b	$00, $05, $05, $05, $05, $05, $14, $14
 	; dc.b	$0F, $5F, $5F, $5F, $5F, $5F, $1F, $1F
