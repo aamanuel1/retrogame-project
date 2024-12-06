@@ -95,8 +95,11 @@ COLL_PTR_LO = $84
 COLL_PTR_HI = $85
 LEVEL_CHANGE = $86
 LEVEL_OFFSET = $87
-LEVEL_ADDR_HI = $88
-LEVEL_ADDR_LO = $89
+LEVEL_ADDR_LO = $88
+LEVEL_ADDR_HI = $89
+LEVEL_LOWERADDR_LO = $8A
+LEVEL_LOWERADDR_HI = $8B
+TEMP_BYTE = $8C
 
 ;ORIGIN
 	org $1001
@@ -124,20 +127,49 @@ draw_title:
         jsr load_screen_memory
 	ldy #$00
 	
-draw_title_loop:
+decompress_title_loop:
 	lda title_chr,Y
-	sta (SCR_PTR_LO),Y
+	tax
 	iny
-	bne draw_title_loop
 
-	inc SCR_PTR_HI
-draw_title_loop_lower:
-        ; lda #$20
-        ; sta (SCR_PTR_LO),Y
-	lda title_chr+$FF,Y
-	sta (SCR_PTR_LO),Y
+	lda title_chr,Y
+	sta TEMP_BYTE
 	iny
-	bne draw_title_loop_lower
+
+write_title_loop:
+	tya
+	pha
+	ldy #$00
+	lda TEMP_BYTE
+	sta (SCR_PTR_LO),Y
+	pla
+	tay
+	inc SCR_PTR_LO
+	bne skip_inc_hi_title
+	inc SCR_PTR_HI
+
+skip_inc_hi_title:
+	dex
+	bne write_title_loop
+
+	lda SCR_PTR_HI
+	cmp #$1F
+	bmi decompress_title_loop
+	beq decompress_title_loop
+	lda SCR_PTR_LO
+	cmp #$FF
+	bmi decompress_title_loop
+; 	iny
+; 	bne draw_title_loop
+
+; 	inc SCR_PTR_HI
+; draw_title_loop_lower:
+;         ; lda #$20
+;         ; sta (SCR_PTR_LO),Y
+; 	lda title_chr+$FF,Y
+; 	sta (SCR_PTR_LO),Y
+; 	iny
+; 	bne draw_title_loop_lower
 
         ldy #$00
 colour_title_loop:
@@ -166,11 +198,27 @@ game_start:
 	sta ENEMY_CYCLE_CTR
 	lda #<level_1
 	sta LEVEL_ADDR_LO
-	sta draw_level_loop+1		;smod code example for changing the level.
+	sta LEVEL_LOWERADDR_LO
+	; sta draw_level_loop+1		;smod code example for changing the level.
 	lda #>level_1
 	sta LEVEL_ADDR_HI
-	sta draw_level_loop+2
-        jsr draw_level
+	sta LEVEL_LOWERADDR_HI
+	; sta draw_level_loop+2
+	; jsr level_offset_store
+	jsr load_level
+        ; jsr draw_level
+
+	lda #$D9			;Starting point for the player (X=11 Y=21)
+	sta PLAYER_ADDR_LO
+	sta SCR_PTR_LO
+	lda #$1F
+	sta PLAYER_ADDR_HI
+	sta SCR_PTR_HI
+	lda #$37
+	ldy #$00
+	sta CUR_SPRITE
+	sta (SCR_PTR_LO),Y
+
 	lda #$05
 	sta ENEMY_MOVE_TIMER
 	lda #$08
@@ -206,16 +254,16 @@ draw_level:
 draw_level_loop:
 	lda level_1,Y
 	sta (SCR_PTR_LO,X)
-        cmp #$37			;Note this will stop working if not facing up.
-        beq player_found
+        ; cmp #$37			;Note this will stop working if not facing up.
+        ; beq player_found
 	cmp #$3C
 	beq enemy_found
 	jmp inc_level_draw
 enemy_found:
 	jsr store_enemy
-	jmp inc_level_draw
-player_found:
-        jsr store_player
+; 	jmp inc_level_draw
+; player_found:
+;         jsr store_player
 inc_level_draw:
         iny
 	inc SCR_PTR_LO
@@ -226,10 +274,10 @@ inc_level_draw:
 draw_level_loop_lower:
 	lda level_1+$FF,Y
 	sta (SCR_PTR_LO,X)
-        cmp #$37
-        bne skip_store_player_2
-        jsr store_player
-skip_store_player_2:
+        ; cmp #$37
+        ; bne skip_store_player_2
+        ; jsr store_player
+; skip_store_player_2:
         iny
         inc SCR_PTR_LO
 	bne draw_level_loop_lower
@@ -395,7 +443,7 @@ change_level:
 	; beq exit_west
 	; cpx #22
 	; beq exit_east
-	cpy #00
+	cpy #01
 	beq exit_north
 	cpy #21
 	beq exit_south
@@ -406,20 +454,91 @@ change_level:
 ; 	lda #01
 ; 	jmp load_level
 exit_north:
+	lda #$1F
+	sta PLAYER_ADDR_HI
+	lda #$CE
+	; sta PLAYER_ADDR_LO
+	clc
+	adc PLAYER_X
+	sta PLAYER_ADDR_LO
+
 	lda #00
-	jmp load_level
+	jmp determine_level_adj
 exit_south:
+	lda #$1E
+	sta PLAYER_ADDR_HI
+	lda #$00
+	; sta PLAYER_ADDR_LO
+	clc
+	adc PLAYER_X
+	sta PLAYER_ADDR_LO
+
 	lda #02
-load_level:
-	lda #<level_2
+determine_level_adj:
+	sta LEVEL_OFFSET
+	tax
+	lda LEVEL_ADDR_LO
+	cmp #<level_1
+	bne level_2_exit
+level_1_exit:
+	lda level_1_adj,X
 	sta LEVEL_ADDR_LO
-	sta draw_level_loop+1		;smod code example for changing the level.
-	lda #>level_2
+	sta LEVEL_LOWERADDR_LO
+	inx
+	lda level_1_adj,X
 	sta LEVEL_ADDR_HI
+	sta LEVEL_LOWERADDR_HI
+	; jsr level_loweraddr_store
+	jmp load_level
+level_2_exit:
+	lda LEVEL_OFFSET
+	bne level_2_south
+	lda level_2_adj,X
+	sta LEVEL_ADDR_LO
+	sta LEVEL_LOWERADDR_LO
+	inx
+	lda level_2_adj,X
+	sta LEVEL_ADDR_HI
+	sta LEVEL_LOWERADDR_HI
+	; jsr level_loweraddr_store
+	jmp load_level
+level_2_south:
+	lda level_2_adj,X
+	sta LEVEL_ADDR_LO
+	sta LEVEL_LOWERADDR_LO
+	inx
+	lda level_2_adj,X
+	sta LEVEL_ADDR_HI
+	sta LEVEL_LOWERADDR_HI
+	; jsr level_loweraddr_store	;Something is happening here that breaks it if you jsr it for some reason
+
+load_level:
+	lda LEVEL_ADDR_LO
+	sta draw_level_loop+1		;smod code example for changing the level.
+	lda LEVEL_ADDR_HI
 	sta draw_level_loop+2
+
+	lda LEVEL_LOWERADDR_LO
+	clc
+	adc #$FF
+	sta LEVEL_LOWERADDR_LO
+	bcc skip_inc_level_addr_hi
+	inc LEVEL_LOWERADDR_HI
+	lda LEVEL_LOWERADDR_LO
+skip_inc_level_addr_hi:
+	sta draw_level_loop_lower+1
+	lda LEVEL_LOWERADDR_HI
+	sta draw_level_loop_lower+2
         jsr draw_level
 	lda #FALSE
 	sta LEVEL_CHANGE
+	rts
+
+level_loweraddr_store:
+	lda LEVEL_ADDR_LO
+	sta LEVEL_LOWERADDR_LO
+	lda LEVEL_ADDR_HI
+	sta LEVEL_LOWERADDR_LO
 	rts
 
 move_left:
@@ -1167,29 +1286,30 @@ videosettings:
 
 ; screen character data replace with compression later.
 title_chr:
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $00, $21, $22, $23, $14, $15, $06, $07, $06, $18, $19, $1A, $1B, $1C, $14, $1D, $20, $20, $20
-	dc.b	$20, $20, $20, $10, $02, $03, $04, $24, $15, $16, $17, $16, $28, $29, $2A, $2B, $2C, $0D, $0E, $20, $20, $20
-	dc.b	$20, $20, $01, $11, $12, $13, $12, $05, $25, $26, $27, $08, $09, $0A, $0B, $0C, $12, $05, $1E, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $82, $99, $20, $81, $81, $92, $8F, $8E, $20, $8D, $81, $8E, $95, $85, $8C, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $90, $92, $85, $93, $93, $20, $93, $90, $81, $83, $85, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
-	dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	INCBIN "compressed_title.bin"
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $00, $21, $22, $23, $14, $15, $06, $07, $06, $18, $19, $1A, $1B, $1C, $14, $1D, $20, $20, $20
+	; dc.b	$20, $20, $20, $10, $02, $03, $04, $24, $15, $16, $17, $16, $28, $29, $2A, $2B, $2C, $0D, $0E, $20, $20, $20
+	; dc.b	$20, $20, $01, $11, $12, $13, $12, $05, $25, $26, $27, $08, $09, $0A, $0B, $0C, $12, $05, $1E, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $82, $99, $20, $81, $81, $92, $8F, $8E, $20, $8D, $81, $8E, $95, $85, $8C, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $90, $92, $85, $93, $93, $20, $93, $90, $81, $83, $85, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
+	; dc.b	$20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20
 
 level_1:
     	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
@@ -1213,7 +1333,7 @@ level_1:
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $37, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
 
 level_2:
@@ -1222,9 +1342,9 @@ level_2:
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $3C, $20, $20, $3C, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $3C, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3C, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
@@ -1238,7 +1358,7 @@ level_2:
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $37, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
+	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
 
 level_1_adj:
@@ -1247,7 +1367,7 @@ level_1_adj:
 	dc.b	$00, $00
 	; dc.b	$00, $00
 level_2_adj:
-	dc.b	$00, $00
+	dc.b	<level_2, >level_2
 	; dc.b	$00, $00
 	dc.b	<level_1, >level_1
 	; dc.b	$00, $00
