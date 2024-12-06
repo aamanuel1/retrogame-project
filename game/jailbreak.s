@@ -110,7 +110,7 @@ nextstmt
 
 ;PROGRAM START
 init:					;Initialize video settings on VIC chip
-	jsr clearscreen
+	; jsr clearscreen
 	ldy #16				;Iterator
 init_loop:
 	dey
@@ -244,14 +244,29 @@ store_player:
 
 store_enemy:
 	ldx num_enemies			;There's no protection against index overrun fyi.
-	lda SCR_PTR_LO
-	sta enemy_low,X
-	lda SCR_PTR_HI
-	sta enemy_high,X
+	; lda SCR_PTR_LO
+	; sta enemy_low,X
+	; lda SCR_PTR_HI
+	; sta enemy_high,X
+	jsr screen_to_enemy
 	lda #TRUE
 	sta enemy_alive,X
 	inc num_enemies
 	ldx #$00			;Set to 0 so the indexed indirect works outside of function.
+	rts
+
+screen_to_enemy:
+	lda SCR_PTR_LO
+	sta enemy_low,X
+	lda SCR_PTR_HI
+	sta enemy_high,X
+	rts
+
+enemy_to_screen:
+	lda enemy_low,X
+	sta SCR_PTR_LO
+	lda enemy_high,X
+	sta SCR_PTR_HI
 	rts
 
 load_screen_memory:
@@ -372,6 +387,30 @@ check_player_status_ret:
 	rts
 
 change_level:
+	jsr player_to_screen
+	jsr screen_to_xy
+	stx PLAYER_X
+	sty PLAYER_Y
+	; cpx #00
+	; beq exit_west
+	; cpx #22
+	; beq exit_east
+	cpy #00
+	beq exit_north
+	cpy #21
+	beq exit_south
+; exit_west:
+; 	lda #03
+; 	jmp load_level
+; exit_east:
+; 	lda #01
+; 	jmp load_level
+exit_north:
+	lda #00
+	jmp load_level
+exit_south:
+	lda #02
+load_level:
 	lda #<level_2
 	sta LEVEL_ADDR_LO
 	sta draw_level_loop+1		;smod code example for changing the level.
@@ -399,17 +438,19 @@ move_left_skip_blank:
 	beq check_left			;If we're not then continue the ckeck
 	dec SCR_PTR_HI			;Otherwise, turn $1F to $1E
 check_left:
-        ldy #$00
-        lda (SCR_PTR_LO),Y
-	jsr global_collision		;Check if it's bumping against edge of map
-	sta COLLISION_STATUS
+        ; ldy #$00
+        ; lda (SCR_PTR_LO),Y
+	; jsr global_collision		;Check if it's bumping against edge of map
+	; sta COLLISION_STATUS
+	jsr check_collision_status
 	beq draw_left			;If it's 0 then keep going
 	inc SCR_PTR_LO			;If it's 1 then reset everything.
 	jmp draw_left			;Draw it not moving.
 draw_left:
-        ldx #$00                        ;X will have the X value of the object from screen to xy
-	lda CUR_SPRITE			;Draw the guy
-	sta (SCR_PTR_LO,X)
+        ; ldx #$00                        ;X will have the X value of the object from screen to xy
+	; lda CUR_SPRITE			;Draw the guy
+	; sta (SCR_PTR_LO,X)
+	jsr draw_sprite
 end_move_left:
 	rts
 
@@ -429,17 +470,19 @@ move_right_skip_blank:
 	beq check_right
 	inc SCR_PTR_HI
 check_right:
-        ldy #$00
-        lda (SCR_PTR_LO),Y
-	jsr global_collision
-	sta COLLISION_STATUS
+        ; ldy #$00
+        ; lda (SCR_PTR_LO),Y
+	; jsr global_collision
+	; sta COLLISION_STATUS
+	jsr check_collision_status
 	beq draw_right
 	dec SCR_PTR_LO
 	jmp draw_right
 draw_right:
-        ldx #$00
-	lda CUR_SPRITE
-	sta (SCR_PTR_LO,X)
+        ; ldx #$00
+	; lda CUR_SPRITE
+	; sta (SCR_PTR_LO,X)
+	jsr draw_sprite
 end_move_right:
         rts
 
@@ -462,10 +505,11 @@ move_up_skip_blank:
 	beq check_up			;If it's in $1exx then keep going (maybe we don't need this)
 	dec SCR_PTR_HI			;Otherwise it's in $1f so bring it to $1e
 check_up:
-	ldy #$00
-	lda (SCR_PTR_LO),y
-	jsr global_collision		;Check if it's collided with the edge
-	sta COLLISION_STATUS
+	; ldy #$00
+	; lda (SCR_PTR_LO),y
+	; jsr global_collision		;Check if it's collided with the edge
+	; sta COLLISION_STATUS
+	jsr check_collision_status
 	beq draw_up			;If false, continue drawing
 	lda SCR_PTR_LO			;If true then reset everything by adding it back or incrementing it back
 	clc
@@ -476,9 +520,10 @@ skip_inc_up:
 	sta SCR_PTR_LO
 	jmp draw_up			;Draw it not moving
 draw_up:
-        ldx #$00
-	lda CUR_SPRITE			;Draw a red circle
-	sta (SCR_PTR_LO,X)
+        ; ldx #$00
+	; lda CUR_SPRITE			;Draw a red circle
+	; sta (SCR_PTR_LO,X)
+	jsr draw_sprite
 end_move_up:
 	rts
 
@@ -498,10 +543,11 @@ move_down_skip_blank:
 	beq check_down
 	inc SCR_PTR_HI
 check_down:
-        ldy #$00
-        lda (SCR_PTR_LO),Y
-	jsr global_collision
-	sta COLLISION_STATUS
+        ; ldy #$00
+        ; lda (SCR_PTR_LO),Y
+	; jsr global_collision
+	; sta COLLISION_STATUS
+	jsr check_collision_status
 	beq draw_down
 	lda SCR_PTR_LO
 	sec
@@ -512,10 +558,24 @@ skip_dec_down:
 	sta SCR_PTR_LO
 	jmp draw_down
 draw_down:
+        ; ldx #$00
+        ; lda CUR_SPRITE
+	; sta (SCR_PTR_LO,X)
+	jsr draw_sprite
+end_move_down:
+	rts
+
+check_collision_status:
+        ldy #$00
+        lda (SCR_PTR_LO),Y
+	jsr global_collision
+	sta COLLISION_STATUS
+	rts
+
+draw_sprite:
         ldx #$00
         lda CUR_SPRITE
 	sta (SCR_PTR_LO,X)
-end_move_down:
 	rts
 
 shoot:
@@ -530,10 +590,11 @@ add_bullet_start:
 	beq add_bullet_continue
 	cmp #$00
 	beq add_bullet_continue
-	lda bullet_low,X
-	sta SCR_PTR_LO
-	lda bullet_high,X
-	sta SCR_PTR_HI
+	; lda bullet_low,X
+	; sta SCR_PTR_LO
+	; lda bullet_high,X
+	; sta SCR_PTR_HI
+	jsr bullet_to_screen
 	jsr remove_bullet_func
 
 add_bullet_continue:
@@ -582,10 +643,11 @@ shoot_end:
 	ldx numbullet			;I guess after a jsr I don't know what the X will be
 	lda CUR_SPRITE
 	sta bullet_sprite,X
-	lda SCR_PTR_LO
-	sta bullet_low,X
-	lda SCR_PTR_HI
-	sta bullet_high,X
+	; lda SCR_PTR_LO
+	; sta bullet_low,X
+	; lda SCR_PTR_HI
+	; sta bullet_high,X
+	jsr screen_to_bullet
 	inc numbullet
         rts
 
@@ -600,11 +662,12 @@ update_bullet_loop:
 	beq update_bullet_end
 	stx COUNTER
 
-	lda bullet_low,X
-	sta SCR_PTR_LO
+	; lda bullet_low,X
+	; sta SCR_PTR_LO
 
-	lda bullet_high,X
-	sta SCR_PTR_HI
+	; lda bullet_high,X
+	; sta SCR_PTR_HI
+	jsr bullet_to_screen
 
 	lda bullet_sprite,X
 	sta CUR_SPRITE
@@ -632,10 +695,11 @@ update_bullet_right:
 	jsr move_right
 update_bullet_inc:
 	ldx COUNTER
-	lda SCR_PTR_LO
-	sta bullet_low,X
-	lda SCR_PTR_HI
-	sta bullet_high,X
+	; lda SCR_PTR_LO
+	; sta bullet_low,X
+	; lda SCR_PTR_HI
+	; sta bullet_high,X
+	jsr screen_to_bullet
 	stx COUNTER					;Probably should rename to bullet counter
 	jsr check_bullet_status
 	jmp update_bullet_loop
@@ -695,6 +759,20 @@ remove_bullet_func:
 	sta (SCR_PTR_LO),Y
 	rts
 
+screen_to_bullet:
+	lda SCR_PTR_LO
+	sta bullet_low,X
+	lda SCR_PTR_HI
+	sta bullet_high,X
+	rts
+
+bullet_to_screen:
+	lda bullet_low,X
+	sta SCR_PTR_LO
+	lda bullet_high,X
+	sta SCR_PTR_HI
+	rts
+
 enemy_hunt_player:
 	lda ENEMY_CYCLE_CTR
 	cmp ENEMY_MOVE_TIMER
@@ -717,10 +795,11 @@ enemy_hunt_player_loop:
 	cmp #$01				;For some strange reason zpg doesn't always init to 0 in a seg.u
 	bne skip_enemy_move
 
-	lda enemy_low,X
-	sta SCR_PTR_LO
-	lda enemy_high,X
-	sta SCR_PTR_HI
+	; lda enemy_low,X
+	; sta SCR_PTR_LO
+	; lda enemy_high,X
+	; sta SCR_PTR_HI
+	jsr enemy_to_screen
 	jsr screen_to_xy
 	txa
 	ldx ENEMY_COUNTER
@@ -774,10 +853,11 @@ enemy_move_down:
 enemy_store:
 	jsr check_enemy_status
 	ldx ENEMY_COUNTER 
-	lda SCR_PTR_LO
-	sta enemy_low,X
-	lda SCR_PTR_HI
-	sta enemy_high,X
+	; lda SCR_PTR_LO
+	; sta enemy_low,X
+	; lda SCR_PTR_HI
+	; sta enemy_high,X
+	jsr screen_to_enemy
 skip_enemy_move:
 	inx
 	stx ENEMY_COUNTER
@@ -798,10 +878,11 @@ enemy_shoot:
 enemy_shoot_player_loop:
 	lda enemy_alive,X
 	beq enemy_shoot_ret
-	lda enemy_low,X
-	sta SCR_PTR_LO
-	lda enemy_high,X
-	sta SCR_PTR_HI
+	; lda enemy_low,X
+	; sta SCR_PTR_LO
+	; lda enemy_high,X
+	; sta SCR_PTR_HI
+	jsr enemy_to_screen
 	jsr screen_to_xy
 	txa
 	ldx ENEMY_COUNTER
@@ -902,10 +983,11 @@ remove_dead_enemies_loop:
 	beq remove_dead_enemies_ret
 
 	ldy #$00 			;This section needed to remove the dead enemy, need to refactor.
-	lda enemy_low,X
-	sta SCR_PTR_LO
-	lda enemy_high,X
-	sta SCR_PTR_HI
+	; lda enemy_low,X
+	; sta SCR_PTR_LO
+	; lda enemy_high,X
+	; sta SCR_PTR_HI
+	jsr enemy_to_screen
 	lda (SCR_PTR_LO),Y
 	cmp #$20
 	beq skip_remove_enemy
@@ -918,10 +1000,11 @@ remove_dead_enemies_loop:
 	bne skip_remove_enemy
 	lda #NO_KEY
 	sta enemy_dir,X
-	lda enemy_low,X
-	sta SCR_PTR_LO
-	lda enemy_high,X
-	sta SCR_PTR_HI
+	; lda enemy_low,X
+	; sta SCR_PTR_LO
+	; lda enemy_high,X
+	; sta SCR_PTR_HI
+	jsr enemy_to_screen
 	lda #32
 	ldy #$00
 	; sta enemy_sprite,X
@@ -962,15 +1045,15 @@ player_collision_check:
 	bpl global_bounds
 	jmp player_collide
 global_bounds:
-	jsr screen_to_xy
-	cpx #0
-	bmi collide
-	cpx #22
-	bpl collide
-	cpy #0
-	bmi collide
-	cpy #23
-	bpl collide
+	; jsr screen_to_xy
+	; cpx #0
+	; bmi collide
+	; cpx #22
+	; bpl collide
+	; cpy #0
+	; bmi collide
+	; cpy #23
+	; bpl collide
 	lda #0				;Return false
 	jmp ret_global_collision
 level_change:
@@ -1033,21 +1116,21 @@ delay_loop:
 	bne delay_loop			
 	rts
 
-clearscreen:
-	jsr load_screen_memory
-	ldy #$00
-clearscreen_loop:
-	lda #SPACE
-	sta (SCR_PTR_LO),Y
-	iny
-	bne clearscreen_loop
-	lda SCR_PTR_HI
-	cmp #$1F
-	beq clearscreen_ret
-	inc SCR_PTR_HI
-	jmp clearscreen_loop
-clearscreen_ret:
-	rts
+; clearscreen:
+; 	jsr load_screen_memory
+; 	ldy #$00
+; clearscreen_loop:
+; 	lda #SPACE
+; 	sta (SCR_PTR_LO),Y
+; 	iny
+; 	bne clearscreen_loop
+; 	lda SCR_PTR_HI
+; 	cmp #$1F
+; 	beq clearscreen_ret
+; 	inc SCR_PTR_HI
+; 	jmp clearscreen_loop
+; clearscreen_ret:
+; 	rts
 
 game_over:
 	jsr player_to_screen
@@ -1058,7 +1141,7 @@ game_over_loop:
 	lda CURKEY
 	cmp #SPACE
 	bne game_over_loop
-	jsr clearscreen
+	; jsr clearscreen
 	lda #60
 	jsr delay
 	jmp draw_title
@@ -1157,7 +1240,17 @@ level_2:
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $37, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
-	
+
+level_1_adj:
+	dc.b	<level_2, >level_2
+	; dc.b	$00, $00
+	dc.b	$00, $00
+	; dc.b	$00, $00
+level_2_adj:
+	dc.b	$00, $00
+	; dc.b	$00, $00
+	dc.b	<level_1, >level_1
+	; dc.b	$00, $00
 	org $1C00
 ; Character bitmap definitions only 63 chars, reverse mode set to retain the base alphanum set because the vic chip loops around
 	dc.b	$3C, $7C, $7C, $7C, $7C, $7C, $7C, $7C
