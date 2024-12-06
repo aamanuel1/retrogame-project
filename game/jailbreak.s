@@ -1263,7 +1263,18 @@ game_over_loop:
 	; jsr clearscreen
 	lda #60
 	jsr delay
+	jsr clear_zero_pg
 	jmp draw_title
+
+clear_zero_pg:
+	ldy #$00			;Will clear all objects from zero pg memory
+	lda #$00			;Because phantom bullets were being drawn
+clear_zero_pg_loop:
+	sta $00,Y
+	iny
+	cpy #$8F
+	bne clear_zero_pg_loop
+	rts
 
 videosettings:
 	dc.b %00001100			;9000 $05 Interlace off, screen origin horiz 12  (def 5, lower value left
