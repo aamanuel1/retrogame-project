@@ -159,18 +159,7 @@ skip_inc_hi_title:
 	lda SCR_PTR_LO
 	cmp #$FF
 	bmi decompress_title_loop
-; 	iny
-; 	bne draw_title_loop
-
-; 	inc SCR_PTR_HI
-; draw_title_loop_lower:
-;         ; lda #$20
-;         ; sta (SCR_PTR_LO),Y
-; 	lda title_chr+$FF,Y
-; 	sta (SCR_PTR_LO),Y
-; 	iny
-; 	bne draw_title_loop_lower
-
+						;This section contained commented uncompressed code for some reason.
         ldy #$00
 colour_title_loop:
 	lda #$09
@@ -232,7 +221,7 @@ game_loop:
 	lda PLAYER_ALIVE
 	bne player_still_alive
 	jmp game_over
-player_still_alive
+player_still_alive:
 	lda LEVEL_CHANGE
 	beq continue_game_loop
 	jsr change_level		;We'll have to go to game loop so no jsr
@@ -274,10 +263,7 @@ inc_level_draw:
 draw_level_loop_lower:
 	lda level_1+$FF,Y
 	sta (SCR_PTR_LO,X)
-        ; cmp #$37
-        ; bne skip_store_player_2
-        ; jsr store_player
-; skip_store_player_2:
+					;This section used to have player detection code not needed anymore
         iny
         inc SCR_PTR_LO
 	bne draw_level_loop_lower
@@ -292,10 +278,6 @@ store_player:
 
 store_enemy:
 	ldx num_enemies			;There's no protection against index overrun fyi.
-	; lda SCR_PTR_LO
-	; sta enemy_low,X
-	; lda SCR_PTR_HI
-	; sta enemy_high,X
 	jsr screen_to_enemy
 	lda #TRUE
 	sta enemy_alive,X
@@ -557,19 +539,12 @@ move_left_skip_blank:
 	beq check_left			;If we're not then continue the ckeck
 	dec SCR_PTR_HI			;Otherwise, turn $1F to $1E
 check_left:
-        ; ldy #$00
-        ; lda (SCR_PTR_LO),Y
-	; jsr global_collision		;Check if it's bumping against edge of map
-	; sta COLLISION_STATUS
-	jsr check_collision_status
+	jsr check_collision_status	;Replaced common code with subroutine.
 	beq draw_left			;If it's 0 then keep going
 	inc SCR_PTR_LO			;If it's 1 then reset everything.
-	jmp draw_left			;Draw it not moving.
+	; jmp draw_left			;Draw it not moving. NOTE looks like unnecessary jump.
 draw_left:
-        ; ldx #$00                        ;X will have the X value of the object from screen to xy
-	; lda CUR_SPRITE			;Draw the guy
-	; sta (SCR_PTR_LO,X)
-	jsr draw_sprite
+	jsr draw_sprite			;Common draw sprite code replaced with subroutine.
 end_move_left:
 	rts
 
@@ -589,18 +564,11 @@ move_right_skip_blank:
 	beq check_right
 	inc SCR_PTR_HI
 check_right:
-        ; ldy #$00
-        ; lda (SCR_PTR_LO),Y
-	; jsr global_collision
-	; sta COLLISION_STATUS
-	jsr check_collision_status
+	jsr check_collision_status	;Common collision check replaced with subroutine.
 	beq draw_right
 	dec SCR_PTR_LO
-	jmp draw_right
+	; jmp draw_right
 draw_right:
-        ; ldx #$00
-	; lda CUR_SPRITE
-	; sta (SCR_PTR_LO,X)
 	jsr draw_sprite
 end_move_right:
         rts
@@ -624,11 +592,7 @@ move_up_skip_blank:
 	beq check_up			;If it's in $1exx then keep going (maybe we don't need this)
 	dec SCR_PTR_HI			;Otherwise it's in $1f so bring it to $1e
 check_up:
-	; ldy #$00
-	; lda (SCR_PTR_LO),y
-	; jsr global_collision		;Check if it's collided with the edge
-	; sta COLLISION_STATUS
-	jsr check_collision_status
+	jsr check_collision_status	;Collision status code replaced with subroutine
 	beq draw_up			;If false, continue drawing
 	lda SCR_PTR_LO			;If true then reset everything by adding it back or incrementing it back
 	clc
@@ -637,11 +601,8 @@ check_up:
         inc SCR_PTR_HI
 skip_inc_up:
 	sta SCR_PTR_LO
-	jmp draw_up			;Draw it not moving
+	; jmp draw_up			;Draw it not moving
 draw_up:
-        ; ldx #$00
-	; lda CUR_SPRITE			;Draw a red circle
-	; sta (SCR_PTR_LO,X)
 	jsr draw_sprite
 end_move_up:
 	rts
@@ -662,10 +623,6 @@ move_down_skip_blank:
 	beq check_down
 	inc SCR_PTR_HI
 check_down:
-        ; ldy #$00
-        ; lda (SCR_PTR_LO),Y
-	; jsr global_collision
-	; sta COLLISION_STATUS
 	jsr check_collision_status
 	beq draw_down
 	lda SCR_PTR_LO
@@ -675,12 +632,8 @@ check_down:
         dec SCR_PTR_HI
 skip_dec_down:
 	sta SCR_PTR_LO
-	jmp draw_down
 draw_down:
-        ; ldx #$00
-        ; lda CUR_SPRITE
-	; sta (SCR_PTR_LO,X)
-	jsr draw_sprite
+	jsr draw_sprite			;Replaced a jmp and common code with subr.
 end_move_down:
 	rts
 
@@ -709,10 +662,6 @@ add_bullet_start:
 	beq add_bullet_continue
 	cmp #$00
 	beq add_bullet_continue
-	; lda bullet_low,X
-	; sta SCR_PTR_LO
-	; lda bullet_high,X
-	; sta SCR_PTR_HI
 	jsr bullet_to_screen
 	jsr remove_bullet_func
 
@@ -762,10 +711,6 @@ shoot_end:
 	ldx numbullet			;I guess after a jsr I don't know what the X will be
 	lda CUR_SPRITE
 	sta bullet_sprite,X
-	; lda SCR_PTR_LO
-	; sta bullet_low,X
-	; lda SCR_PTR_HI
-	; sta bullet_high,X
 	jsr screen_to_bullet
 	inc numbullet
         rts
@@ -774,18 +719,9 @@ update_bullet:
 	ldx #0
 
 update_bullet_loop:
-	; cpx numbullet					;Note remove later, was causing the bullet is stuck issue
-	; beq update_bullet_end
-	; bpl update_bullet_end
 	cpx #MAX_BULLET
 	beq update_bullet_end
 	stx COUNTER
-
-	; lda bullet_low,X
-	; sta SCR_PTR_LO
-
-	; lda bullet_high,X
-	; sta SCR_PTR_HI
 	jsr bullet_to_screen
 
 	lda bullet_sprite,X
@@ -814,10 +750,6 @@ update_bullet_right:
 	jsr move_right
 update_bullet_inc:
 	ldx COUNTER
-	; lda SCR_PTR_LO
-	; sta bullet_low,X
-	; lda SCR_PTR_HI
-	; sta bullet_high,X
 	jsr screen_to_bullet
 	stx COUNTER					;Probably should rename to bullet counter
 	jsr check_bullet_status
@@ -913,11 +845,6 @@ enemy_hunt_player_loop:
 	beq skip_enemy_move
 	cmp #$01				;For some strange reason zpg doesn't always init to 0 in a seg.u
 	bne skip_enemy_move
-
-	; lda enemy_low,X
-	; sta SCR_PTR_LO
-	; lda enemy_high,X
-	; sta SCR_PTR_HI
 	jsr enemy_to_screen
 	jsr screen_to_xy
 	txa
@@ -972,10 +899,6 @@ enemy_move_down:
 enemy_store:
 	jsr check_enemy_status
 	ldx ENEMY_COUNTER 
-	; lda SCR_PTR_LO
-	; sta enemy_low,X
-	; lda SCR_PTR_HI
-	; sta enemy_high,X
 	jsr screen_to_enemy
 skip_enemy_move:
 	inx
@@ -997,10 +920,6 @@ enemy_shoot:
 enemy_shoot_player_loop:
 	lda enemy_alive,X
 	beq enemy_shoot_ret
-	; lda enemy_low,X
-	; sta SCR_PTR_LO
-	; lda enemy_high,X
-	; sta SCR_PTR_HI
 	jsr enemy_to_screen
 	jsr screen_to_xy
 	txa
@@ -1102,10 +1021,6 @@ remove_dead_enemies_loop:
 	beq remove_dead_enemies_ret
 
 	ldy #$00 			;This section needed to remove the dead enemy, need to refactor.
-	; lda enemy_low,X
-	; sta SCR_PTR_LO
-	; lda enemy_high,X
-	; sta SCR_PTR_HI
 	jsr enemy_to_screen
 	lda (SCR_PTR_LO),Y
 	cmp #$20
@@ -1119,10 +1034,6 @@ remove_dead_enemies_loop:
 	bne skip_remove_enemy
 	lda #NO_KEY
 	sta enemy_dir,X
-	; lda enemy_low,X
-	; sta SCR_PTR_LO
-	; lda enemy_high,X
-	; sta SCR_PTR_HI
 	jsr enemy_to_screen
 	lda #32
 	ldy #$00
@@ -1172,7 +1083,7 @@ global_bounds:
 	; cpy #0
 	; bmi collide
 	; cpy #23
-	; bpl collide
+	; bpl collide			;Might need this bounding box.
 	lda #0				;Return false
 	jmp ret_global_collision
 level_change:
