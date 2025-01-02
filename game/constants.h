@@ -1,3 +1,5 @@
+;This file includes game constants related to gameplay and buttons for
+;jailbreak.s
 ;CONSTANTS
 MAX_BULLET = $08
 MAX_ENEMIES = 8
