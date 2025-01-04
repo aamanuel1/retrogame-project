@@ -26,57 +26,20 @@ init_loop:
 	sta $9000,Y
 	tya
 	bne init_loop
-
-draw_title:
-	; Load and store starting screen memory locations to draw title
-        jsr load_screen_memory
-	ldy #$00
-	
-decompress_title_loop:
-	lda title_chr,Y
-	tax
-	iny
-
-	lda title_chr,Y
-	sta TEMP_BYTE
-	iny
-
-write_title_loop:
-	tya
-	pha
-	ldy #$00
-	lda TEMP_BYTE
-	sta (SCR_PTR_LO),Y
-	pla
-	tay
-	inc SCR_PTR_LO
-	bne skip_inc_hi_title
-	inc SCR_PTR_HI
-
-skip_inc_hi_title:
-	dex
-	bne write_title_loop
-
-	lda SCR_PTR_HI
-	cmp #$1F
-	bmi decompress_title_loop
-	beq decompress_title_loop
-	lda SCR_PTR_LO
-	cmp #$FF
-	bmi decompress_title_loop
-						;This section contained commented uncompressed code for some reason.
+	jsr draw_screen
         ldy #$00
-colour_title_loop:
+
+colour_screen_loop:			;TODO: turn into subroutine?
 	lda #$09
 	sta (COLOUR_PTR_LO),Y
 	inc COLOUR_PTR_LO
-	bne skip_inc_title_colour
+	bne skip_inc_screen_colour
         inc COLOUR_PTR_HI
-skip_inc_title_colour:
+skip_inc_screen_colour:
         lda COLOUR_PTR_HI
         cmp #$98
         beq main
-        jmp colour_title_loop
+        jmp colour_screen_loop
 
 main:
         lda CURKEY
@@ -1080,7 +1043,7 @@ game_over_loop:
 	lda #60
 	jsr delay
 	jsr clear_zero_pg
-	jmp draw_title
+	jmp init
 
 clear_zero_pg:
 	ldy #$00			;Will clear all objects from zero pg memory
@@ -1090,6 +1053,46 @@ clear_zero_pg_loop:
 	iny
 	cpy #$8F
 	bne clear_zero_pg_loop
+	rts
+
+draw_screen:
+	; Load and store starting screen memory locations to draw title
+        jsr load_screen_memory
+	ldy #$00
+	
+decompress_screen_loop:
+	lda title_chr,Y
+	tax
+	iny
+
+	lda title_chr,Y
+	sta TEMP_BYTE
+	iny
+
+write_to_screen_loop:
+	tya
+	pha
+	ldy #$00
+	lda TEMP_BYTE
+	sta (SCR_PTR_LO),Y
+	pla
+	tay
+	inc SCR_PTR_LO
+	bne skip_inc_hi_screen
+	inc SCR_PTR_HI
+
+skip_inc_hi_screen:
+	dex
+	bne write_to_screen_loop
+
+	lda SCR_PTR_HI
+	cmp #$1F
+	bmi decompress_screen_loop
+	beq decompress_screen_loop
+	lda SCR_PTR_LO
+	cmp #$FF
+	bmi decompress_screen_loop
+						;This section contained commented uncompressed code for some reason.
 	rts
 
 videosettings:
