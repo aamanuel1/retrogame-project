@@ -1,3 +1,6 @@
+;characters.h
+;This file includes character datasets as byte arrays for jailbreak.s	
+	
 	dc.b	$00, $04, $04, $04, $04, $04, $04, $04
 	dc.b	$00, $54, $44, $44, $44, $44, $44, $44
 	dc.b	$00, $54, $10, $10, $10, $10, $10, $10
