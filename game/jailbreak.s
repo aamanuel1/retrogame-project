@@ -323,7 +323,7 @@ exit_south:
 	adc PLAYER_X
 	sta PLAYER_ADDR_LO
 
-	lda #02
+	lda #04
 determine_level_adj:
 	sta LEVEL_OFFSET
 	tax
@@ -331,11 +331,11 @@ determine_level_adj:
 	cmp #<level_1
 	bne level_2_exit
 level_1_exit:
-	lda level_1_adj,X
+	lda level_1,X
 	sta LEVEL_ADDR_LO
 	sta LEVEL_LOWERADDR_LO
 	inx
-	lda level_1_adj,X
+	lda level_1,X
 	sta LEVEL_ADDR_HI
 	sta LEVEL_LOWERADDR_HI
 	; jsr level_loweraddr_store
@@ -343,29 +343,36 @@ level_1_exit:
 level_2_exit:
 	lda LEVEL_OFFSET
 	bne level_2_south
-	lda level_2_adj,X
+	lda level_2,X
 	sta LEVEL_ADDR_LO
 	sta LEVEL_LOWERADDR_LO
 	inx
-	lda level_2_adj,X
+	lda level_2,X
 	sta LEVEL_ADDR_HI
 	sta LEVEL_LOWERADDR_HI
 	; jsr level_loweraddr_store
 	jmp load_level
 level_2_south:
-	lda level_2_adj,X
+	lda level_2,X
 	sta LEVEL_ADDR_LO
 	sta LEVEL_LOWERADDR_LO
 	inx
-	lda level_2_adj,X
+	lda level_2,X
 	sta LEVEL_ADDR_HI
 	sta LEVEL_LOWERADDR_HI
 	; jsr level_loweraddr_store	;Something is happening here that breaks it if you jsr it for some reason
 
 load_level:
 	lda LEVEL_ADDR_LO
+	clc
+	adc #8
+	bcc lvl_addr_lo_normal
+	inc LEVEL_ADDR_HI
+lvl_addr_lo_normal:
+	sta LEVEL_LOWERADDR_LO
 	sta draw_level_loop+1		;smod code example for changing the level.
 	lda LEVEL_ADDR_HI
+	sta LEVEL_LOWERADDR_HI
 	sta draw_level_loop+2
 
 	lda LEVEL_LOWERADDR_LO
@@ -1119,6 +1126,10 @@ title_chr:
 	INCBIN "compressed_title.bin"
 
 level_1:
+	dc.b	<level_2, >level_2
+	dc.b	$00, $00
+	dc.b	$00, $00
+	dc.b	$00, $00
     	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
@@ -1144,7 +1155,11 @@ level_1:
 	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
 
 level_2:
-    dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
+	dc.b	<level_2, >level_2
+	dc.b	$00, $00
+	dc.b	<level_1, >level_1
+	dc.b	$00, $00
+    	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
@@ -1169,15 +1184,9 @@ level_2:
 	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
 
 level_1_adj:
-	dc.b	<level_2, >level_2
-	; dc.b	$00, $00
-	dc.b	$00, $00
-	; dc.b	$00, $00
+
 level_2_adj:
-	dc.b	<level_2, >level_2
-	; dc.b	$00, $00
-	dc.b	<level_1, >level_1
-	; dc.b	$00, $00
+
 	org $1C00
 	
 ; Character bitmap definitions only 63 chars, reverse mode set to retain the base alphanum set because the vic chip loops around
