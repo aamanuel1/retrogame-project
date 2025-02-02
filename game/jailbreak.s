@@ -104,7 +104,7 @@ continue_game_loop:
         jsr delay
 	jmp game_loop			;End of "game" loop
 
-draw_level:
+draw_level:				;TODO reformat draw_level to use screen decompressor
         jsr load_screen_memory
 	ldy #$00
         ldx #$00
@@ -116,7 +116,7 @@ draw_level_loop:
 	cmp #$3C
 	beq enemy_found
 	jmp inc_level_draw
-enemy_found:
+enemy_found:				;TODO have to turn this into something that scans the decompressed screen
 	jsr store_enemy
 ; 	jmp inc_level_draw
 ; player_found:
@@ -289,25 +289,24 @@ change_level:
 	jsr screen_to_xy
 	stx PLAYER_X
 	sty PLAYER_Y
-	; cpx #00
-	; beq exit_west
-	; cpx #22
-	; beq exit_east
+	cpx #00
+	beq exit_west
+	cpx #22
+	beq exit_east
 	cpy #01
 	beq exit_north
 	cpy #21
 	beq exit_south
-; exit_west:
-; 	lda #03
-; 	jmp load_level
-; exit_east:
-; 	lda #01
-; 	jmp load_level
+exit_west:			;TODO move player accordingly.
+ 	lda #03
+ 	jmp load_level
+exit_east:
+ 	lda #01
+ 	jmp load_level
 exit_north:
 	lda #$1F
 	sta PLAYER_ADDR_HI
 	lda #$CE
-	; sta PLAYER_ADDR_LO
 	clc
 	adc PLAYER_X
 	sta PLAYER_ADDR_LO
@@ -318,13 +317,12 @@ exit_south:
 	lda #$1E
 	sta PLAYER_ADDR_HI
 	lda #$00
-	; sta PLAYER_ADDR_LO
 	clc
 	adc PLAYER_X
 	sta PLAYER_ADDR_LO
 
 	lda #04
-determine_level_adj:
+determine_level_adj:		;TODO generalize level traversal
 	sta LEVEL_OFFSET
 	tax
 	lda LEVEL_ADDR_LO
@@ -362,7 +360,7 @@ level_2_south:
 	sta LEVEL_LOWERADDR_HI
 	; jsr level_loweraddr_store	;Something is happening here that breaks it if you jsr it for some reason
 
-load_level:
+load_level:				;TODO change location of self modifying code (smod) from draw_level_loop
 	lda LEVEL_ADDR_LO
 	clc
 	adc #8
@@ -1124,6 +1122,8 @@ videosettings:
 ; screen character data replace with compression later.
 title_chr:
 	INCBIN "compressed_title.bin"
+
+;TODO change this to an include to levels file.
 
 level_1:
 	dc.b	<level_2, >level_2
