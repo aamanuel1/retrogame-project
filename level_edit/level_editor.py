@@ -64,6 +64,7 @@ def compress_level(data):
             compressed_level.append(level_objs.get(cleaned_data[i], '$20'))
         i += run_length
 
+    #TODO clean up the compressed level string.
     print(i)
     i = 0
     while(i < len(data)):

@@ -85,8 +85,8 @@ game_start:
 	lda #FALSE
 	sta LEVEL_CHANGE
 game_loop:
-        jsr poll_input
-	lda PLAYER_ALIVE
+        jsr poll_input		;TODO investigate if we should put a draw all characters here.
+	lda PLAYER_ALIVE		;to stop objects in game from "flickering"
 	bne player_still_alive
 	jmp game_over
 player_still_alive:
@@ -318,7 +318,7 @@ change_level:
 	beq exit_north
 	cpy #21
 	beq exit_south
-exit_west:			;DONE (to best of my ability) move player accordingly.
+exit_west:			;TODO movement west and east at portals still off.
 	lda #22
 	clc
 	adc PLAYER_ADDR_LO
@@ -360,7 +360,7 @@ exit_south:
 	lda #04
 
 determine_next_level:		;DONE generalize level traversal, used smod
-	sta LEVEL_OFFSET
+	sta LEVEL_OFFSET		;TODO something isn't working here. What is it?
 	tax
 	lda LEVEL_ADDR_LO
 	sta next_level_marker+1
