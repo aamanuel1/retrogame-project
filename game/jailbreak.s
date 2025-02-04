@@ -326,7 +326,7 @@ exit_west:			;DONE (to best of my ability) move player accordingly.
 	inc PLAYER_ADDR_HI
 exit_west_continue:
 	sta PLAYER_ADDR_LO
- 	lda #03
+ 	lda #06
  	jmp determine_next_level
 
 exit_east:
@@ -334,9 +334,10 @@ exit_east:
 	sec
 	sbc PLAYER_ADDR_LO
 	bcs exit_east_continue
-	dec PLAYER_ADDR_LO
+	dec PLAYER_ADDR_HI
 exit_east_continue:
- 	lda #01
+	sta PLAYER_ADDR_LO
+ 	lda #02
  	jmp determine_next_level
 
 exit_north:
@@ -363,8 +364,10 @@ determine_next_level:		;DONE generalize level traversal, used smod
 	tax
 	lda LEVEL_ADDR_LO
 	sta next_level_marker+1
+	sta next_level_marker+9
 	lda LEVEL_ADDR_HI
 	sta next_level_marker+2
+	sta next_level_marker+10
 next_level_marker:
 	lda level_0,X
 	sta LEVEL_ADDR_LO
