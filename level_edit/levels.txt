@@ -21,9 +21,11 @@ x....................x
 x....................x
 x....................x
 x....................x
+x....................x
 xxxxxxxxxxxxxxxxxxxxxx
 level_1
 xxxxxxxxxxxxxxxxxxxxxx
+x....................x
 x....................x
 x....T...............x
 x.......xxxxx........x
@@ -47,6 +49,7 @@ x....................x
 xxxxxxxxxxxxxxxxxxxxxx
 level_2
 xxxxxxxxxxxxxxxxxxxxxx
+x....................x
 x....................x
 x...............T....x
 x........xxxxx.......x
@@ -90,9 +93,11 @@ x....................x
 x....................x
 x....................x
 x....................x
+x....................x
 xxxxxxxxxx00xxxxxxxxxx
 level_4
 xxxxxxxxxxxxxxxxxxxxxx
+x....................x
 x....................x
 x....T...............x
 x.......xxxxx........x
@@ -117,6 +122,7 @@ xxxxxxxxxxxxxxxxxxxxxx
 level_5
 xxxxxxxxxx00xxxxxxxxxx
 x....................x
+x....................x
 x...............T....x
 x........xxxxx.......x
 x....................x
@@ -136,4 +142,4 @@ x....................x
 x....................x
 x....................x
 x....................x
-xxxxxxxxxxxxxxxxxxxxxx.
+xxxxxxxxxxxxxxxxxxxxxx
