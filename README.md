@@ -4,6 +4,9 @@
 
 Jailbreak is a Berzerk clone where you play as a prisoner attempting to escape from a jail. Work is ongoing.
 
+![Title](misc/titlescreen.png)
+![Gameplay](misc/gameplay.png)
+
 ### Folder structure
 The following is the folder structure for this project.
 ```
@@ -13,13 +16,15 @@ The following is the folder structure for this project.
 │   ├───rle_gpt
 │   └───zx02
 ├───game
-└───level_edit
+├───level_edit
+└───misc
 ```
 
-- `compress` includes a Run Length Encoding algorithm and an LZSS algorithm from https://github.com/einar-saukas/ZX0 to compress the title screen of the game to fit the limited memory of a VIC-20 (3.5KB!)
+- `compress` includes a Run Length Encoding algorithm and an LZSS algorithm from https://github.com/einar-saukas/ZX0 to compress the title screen of the game to fit the limited memory of a VIC-20 (3.5KB!).
 - `exp` includes test programs meant to incrementally familiarize myself with 6502 assembly language and the VIC-20 environment, from printing out Hello World to testing out game mechanics.
 - `game` includes the main `jailbreak.s` source code and accompanying headers for the address space, characters, binary of the compressed title screen, levels, etc.  
 - `level_edit` includes a python script adapted from the program developed in `exp/rle_gpt` to create the `levels.h` header file from a text file like `levels.txt`.
+- `misc` includes any miscellaneous files or assets like screenshots etc.
 
 ### How to Run
 
