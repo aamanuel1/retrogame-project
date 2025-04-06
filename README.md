@@ -12,9 +12,9 @@ The following is the folder structure for this project.
 ```
 ./
 ├───compress
-├───exp
 │   ├───rle_gpt
 │   └───zx02
+├───exp
 ├───game
 ├───level_edit
 └───misc
@@ -23,7 +23,7 @@ The following is the folder structure for this project.
 - `compress` includes a Run Length Encoding algorithm and an LZSS algorithm from https://github.com/einar-saukas/ZX0 to compress the title screen of the game to fit the limited memory of a VIC-20 (3.5KB!).
 - `exp` includes test programs meant to incrementally familiarize myself with 6502 assembly language and the VIC-20 environment, from printing out Hello World to testing out game mechanics.
 - `game` includes the main `jailbreak.s` source code and accompanying headers for the address space, characters, binary of the compressed title screen, levels, etc.  
-- `level_edit` includes a python script adapted from the program developed in `exp/rle_gpt` to create the `levels.h` header file from a text file like `levels.txt`.
+- `level_edit` includes a python script adapted from the program developed in `compress/rle_gpt` to create the `levels.h` header file from a text file like `levels.txt`.
 - `misc` includes any miscellaneous files or assets like screenshots etc.
 
 ### How to Run
@@ -34,9 +34,9 @@ To run the game, you must first assemble the game using the DASM assembler, whic
 ```
 dasm jailbreak.s -ojailbreak.prg -lout.lst
 ```
-Then, run `jailbreak.prg` in an emulator such as xvic, part of the VICE emulator suite (https://vice-emu.sourceforge.io/).
+Then, run `jailbreak.prg` in an emulator such as xvic, part of the VICE emulator suite (https://vice-emu.sourceforge.io/). The prg file will be placed in the `game` folder once the game is finished.
 
-To assemble programs in the `exp` or other folder, replace the `jailbreak.s` and `jailbreak.prg` with the corresponding source code and .prg filename you wish to assemble, and then run as needed in an emulator.
+To assemble programs in the `exp` or other folder, replace the `jailbreak.s` and `jailbreak.prg` in the dasm command above with the corresponding source code and .prg filename you wish to assemble, and then run  in an emulator.
 
 #### Running the level editor 
 
