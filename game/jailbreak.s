@@ -53,11 +53,11 @@ game_start:
 	sta numbullet
 	sta num_enemies
 	sta ENEMY_CYCLE_CTR
-	lda #<level_1
+	lda #<level_0
 	sta LEVEL_ADDR_LO
 	sta LEVEL_LOWERADDR_LO
 	; sta draw_level_loop+1		;smod code example for changing the level.
-	lda #>level_1
+	lda #>level_0
 	sta LEVEL_ADDR_HI
 	sta LEVEL_LOWERADDR_HI
 	; sta draw_level_loop+2
@@ -319,24 +319,44 @@ change_level:
 	cpy #21
 	beq exit_south
 exit_west:			;TODO movement west and east at portals still off.
-	lda #22
-	clc
-	adc PLAYER_ADDR_LO
-	bcc exit_west_continue
+	lda #$1E
+	sta PLAYER_ADDR_HI
+	lda #$14
+	sta PLAYER_ADDR_LO
+	ldx PLAYER_Y
+exit_west_loop:
+	sec
+	sbc #22
+	bcs exit_west_continue
 	inc PLAYER_ADDR_HI
 exit_west_continue:
 	sta PLAYER_ADDR_LO
+	dex
+	stx PLAYER_Y
+	cpx #0
+	bne exit_west_loop
+
  	lda #06
  	jmp determine_next_level
 
 exit_east:
-	lda #22
-	sec
-	sbc PLAYER_ADDR_LO
-	bcs exit_east_continue
-	dec PLAYER_ADDR_HI
+	lda #$1E
+	sta PLAYER_ADDR_HI
+	lda #$00
+	sta PLAYER_ADDR_LO
+	ldx PLAYER_Y
+exit_east_loop:
+	clc
+	adc #22
+	bcc exit_east_continue
+	inc PLAYER_ADDR_HI
 exit_east_continue:
 	sta PLAYER_ADDR_LO
+	dex
+	stx PLAYER_Y
+	cpx #0
+	bne exit_east_loop
+
  	lda #02
  	jmp determine_next_level
 
@@ -425,6 +445,15 @@ lvl_addr_lo_normal:
 	sta LEVEL_LOWERADDR_HI
 	sta decompress_screen_loop+2
 	sta decompress_screen_loop+7
+
+	lda LEVEL_ADDR_LO
+	sec
+	sbc #8
+	bcs lvl_addr_reset_normal
+	dec LEVEL_ADDR_HI
+lvl_addr_reset_normal:
+	sta LEVEL_LOWERADDR_LO
+
 
 ;	lda LEVEL_LOWERADDR_LO
 ;	clc
