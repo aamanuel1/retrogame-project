@@ -321,13 +321,13 @@ change_level:
 exit_west:			;TODO movement west and east at portals still off.
 	lda #$1E
 	sta PLAYER_ADDR_HI
-	lda #$14
+	lda #$00
 	sta PLAYER_ADDR_LO
 	ldx PLAYER_Y
 exit_west_loop:
-	sec
-	sbc #22
-	bcs exit_west_continue
+	clc
+	adc #22
+	bcc exit_west_continue
 	inc PLAYER_ADDR_HI
 exit_west_continue:
 	sta PLAYER_ADDR_LO
@@ -342,12 +342,12 @@ exit_west_continue:
 exit_east:
 	lda #$1E
 	sta PLAYER_ADDR_HI
-	lda #$00
+	lda #$14
 	sta PLAYER_ADDR_LO
 	ldx PLAYER_Y
 exit_east_loop:
 	clc
-	adc #22
+	adc #23
 	bcc exit_east_continue
 	inc PLAYER_ADDR_HI
 exit_east_continue:
