@@ -312,7 +312,7 @@ change_level:
 	sty PLAYER_Y
 	cpx #00
 	beq exit_west
-	cpx #22
+	cpx #20
 	beq exit_east
 	cpy #01
 	beq exit_north
@@ -321,7 +321,7 @@ change_level:
 exit_west:			;TODO movement west and east at portals still off.
 	lda #$1E
 	sta PLAYER_ADDR_HI
-	lda #$00
+	lda #$15
 	sta PLAYER_ADDR_LO
 	ldx PLAYER_Y
 exit_west_loop:
@@ -334,7 +334,7 @@ exit_west_continue:
 	dex
 	stx PLAYER_Y
 	cpx #0
-	bne exit_west_loop
+	bpl exit_west_loop
 
  	lda #06
  	jmp determine_next_level
@@ -342,12 +342,12 @@ exit_west_continue:
 exit_east:
 	lda #$1E
 	sta PLAYER_ADDR_HI
-	lda #$14
+	lda #$01
 	sta PLAYER_ADDR_LO
 	ldx PLAYER_Y
 exit_east_loop:
 	clc
-	adc #23
+	adc #22
 	bcc exit_east_continue
 	inc PLAYER_ADDR_HI
 exit_east_continue:
@@ -355,8 +355,7 @@ exit_east_continue:
 	dex
 	stx PLAYER_Y
 	cpx #0
-	bne exit_east_loop
-
+	bpl exit_east_loop
  	lda #02
  	jmp determine_next_level
 
@@ -446,7 +445,7 @@ lvl_addr_lo_normal:
 	sta decompress_screen_loop+2
 	sta decompress_screen_loop+7
 
-	lda LEVEL_ADDR_LO
+	lda LEVEL_LOWERADDR_LO
 	sec
 	sbc #8
 	bcs lvl_addr_reset_normal
