@@ -42,6 +42,7 @@ def compress_level(data):
     level_length = 506
     i = 0
     cleaned_data = data.replace('\n', '')
+    compressed_length = 0
 
     while i < level_length:
         run_length = 1
@@ -57,6 +58,7 @@ def compress_level(data):
 
         run_length_string = '${:02X}'.format(run_length)
         compressed_level.append(run_length_string)
+        compressed_length += 1
 
         #I bet this will bite me in the ass later.
         #It did.
@@ -65,25 +67,39 @@ def compress_level(data):
         i += run_length
 
     #TODO clean up the compressed level string.
-    print(i)
+    # print(i)
+    # print (compressed_level)
     i = 0
-    while(i < len(data)):
-        if not (i % 21):
-            compressed_level.insert(i, "\n\tdc.b\t")
+    compressed_level_line = []
+    finished_compressed_level = ""
+    while(i < len(compressed_level)):
+        print(i)
+        print(compressed_level[i])
+        compressed_level_line.append(compressed_level[i])
+
+        if (not ((i + 1) % 21) or (i == len(compressed_level) - 1)):
+            # print("newline")
+            compressed_level_line = ",".join(compressed_level_line)
+            finished_compressed_level += "\n\tdc.b\t" + compressed_level_line
+            compressed_level_line = []
+            # compressed_level.insert(i, "\n\tdc.b\t")
+
         i += 1
-    finished_compressed_level = ",".join(compressed_level)
-    finished_compressed_level = "\tdc.b\t" + finished_compressed_level
+    # finished_compressed_level = ",".join(compressed_level)
+    # finished_compressed_level = "\tdc.b\t" + finished_compressed_level
+    # finished_compressed_level = "\tdc.b\t" + finished_compressed_level
     return finished_compressed_level
 
 def extract_level_layout(level_layout_line):
     return level_layout_line.split(',')
 
 def main():
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 3:
         print("Usage: python level_editor.py <level_file> <output_file>")
+        exit()
 
-        level_file = sys.argv[1]
-        output_file = sys.argv[2]
+    level_file = sys.argv[1]
+    output_file = sys.argv[2]
 
     extracted_level_layout = None
     raw_level_data = None
