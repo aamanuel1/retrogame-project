@@ -306,6 +306,7 @@ check_player_status_ret:
 	rts
 
 change_level:
+	jsr remove_all_enemies
 	jsr player_to_screen
 	jsr screen_to_xy
 	stx PLAYER_X
@@ -318,7 +319,7 @@ change_level:
 	beq exit_north
 	cpy #21
 	beq exit_south
-exit_west:			;TODO movement west and east at portals still off.
+exit_west:			;movement west and east at portals will automatically fall into exit_west.
 	lda #$1E
 	sta PLAYER_ADDR_HI
 	lda #$15
@@ -1004,6 +1005,28 @@ skip_remove_enemy:
 
 remove_dead_enemies_ret:
 	rts
+
+remove_all_enemies:
+	ldx #$00
+	stx ENEMY_COUNTER
+remove_all_enemies_loop:
+	cpx #MAX_ENEMIES
+	beq remove_dead_enemies_ret
+	
+	ldy #$00
+	jsr enemy_to_screen
+	lda #$32
+	ldy #$00
+	sta (SCR_PTR_LO),Y
+	sty enemy_alive,X
+	lda #NO_KEY
+	sta enemy_dir,X
+	jsr enemy_to_screen
+	sty num_enemies
+	inx 
+	stx ENEMY_COUNTER
+	jmp remove_all_enemies_loop
+
 
 global_collision:
 	cmp #$3F			;Compare with wall
