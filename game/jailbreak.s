@@ -311,7 +311,7 @@ change_level:
 	jsr screen_to_xy
 	stx PLAYER_X
 	sty PLAYER_Y
-	cpx #00
+	cpx #01
 	beq exit_west
 	cpx #20
 	beq exit_east
@@ -335,7 +335,7 @@ exit_west_continue:
 	dex
 	stx PLAYER_Y
 	cpx #0
-	bpl exit_west_loop
+	bne exit_west_loop
 
  	lda #06
  	jmp determine_next_level
@@ -356,7 +356,7 @@ exit_east_continue:
 	dex
 	stx PLAYER_Y
 	cpx #0
-	bpl exit_east_loop
+	bne exit_east_loop
  	lda #02
  	jmp determine_next_level
 
