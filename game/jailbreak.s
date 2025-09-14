@@ -101,7 +101,8 @@ continue_game_loop:
 	jsr remove_dead_enemies
 	jsr enemy_update_timer
 	lda #8
-        jsr delay
+        jsr delay	
+	jsr draw_curr_chars
 	jmp game_loop			;End of "game" loop
 
 draw_level:				;DONE reformat draw_level to use screen decompressor
@@ -140,6 +141,33 @@ draw_level:				;DONE reformat draw_level to use screen decompressor
 ;	bne draw_level_loop_lower
 ;        rts
 
+draw_curr_chars:
+	jsr player_to_screen
+	ldy #$00
+;	sta (SCR_PTR_LO),Y
+	lda PLAYER_SPRITE
+	sta (SCR_PTR_LO),Y
+draw_curr_enemies:
+	ldx #$00
+draw_curr_enemies_loop:
+	ldy #$00
+	lda enemy_alive,X
+	cmp #FALSE
+	beq skip_draw_enemy			;a beq on a should do same thing as this because false=0
+	jsr enemy_to_screen			;but let's be explicit
+	lda enemy_sprite,X
+;	lda #$3C
+	sta (SCR_PTR_LO),Y
+	jmp increment_curr_enemy
+skip_draw_enemy:
+;	lda #32
+;	sta (SCR_PTR_LO),Y 
+increment_curr_enemy:
+	inx
+	cpx #MAX_ENEMIES			;I guess a do while should be fine.
+	bne draw_curr_enemies_loop
+	rts
+
 find_enemies:
 	ldy #$00
 	jsr load_screen_memory
@@ -170,6 +198,8 @@ store_enemy:
 	jsr screen_to_enemy
 	lda #TRUE
 	sta enemy_alive,X
+	lda #$3C				;Forgot to store the sprite lol.
+	sta enemy_sprite,X
 	inc num_enemies
 	ldx #$00			;Set to 0 so the indexed indirect works outside of function.
 	rts
@@ -608,8 +638,9 @@ draw_sprite:
 shoot:
 	ldx numbullet
 	cpx #MAX_BULLET
-	bne add_bullet_start
-	ldx #$00
+;	bne add_bullet_start
+	bmi add_bullet_start			;bne worked for a while, might still work but this is 
+	ldx #$00						;0 indexed (I think) so it's better?
 	stx numbullet
 add_bullet_start:
 	lda bullet_dir,X
@@ -795,6 +826,7 @@ enemy_hunt_player_loop:
 	ldx ENEMY_COUNTER
 	cpx #MAX_ENEMIES
 	beq enemy_hunt_player_ret
+	bpl enemy_hunt_player_ret		;Was trying to bughunt this might be overkill b/c counter increments from 0 delete later maybe
 
 	lda enemy_alive,X
 	beq skip_enemy_move
@@ -856,6 +888,8 @@ enemy_store:
 	ldx ENEMY_COUNTER 
 	jsr screen_to_enemy
 skip_enemy_move:
+	lda CUR_SPRITE						;Forgot to load and store enemy sprite. Probably important. Was working before though.
+	sta (enemy_sprite,X)
 	inx
 	stx ENEMY_COUNTER
 	jmp enemy_hunt_player_loop			;Have to think about how this will work with more than one enemy.
@@ -992,7 +1026,7 @@ remove_dead_enemies_loop:
 	jsr enemy_to_screen
 	lda #32
 	ldy #$00
-	; sta enemy_sprite,X
+	sta enemy_sprite,X		;Remove the sprite from memory.
 	sta (SCR_PTR_LO),Y
 	; lda #$00
 	; sta enemy_low,X
