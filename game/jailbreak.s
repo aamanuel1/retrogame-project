@@ -75,6 +75,7 @@ game_start:
 	ldy #$00
 	sta CUR_SPRITE
 	sta (SCR_PTR_LO),Y
+	sta PLAYER_SPRITE		;lol forgot to store the sprite, only showed up as bug with refresh frame subr
 
 	lda #$05
 	sta ENEMY_MOVE_TIMER
