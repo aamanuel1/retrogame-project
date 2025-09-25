@@ -112,40 +112,11 @@ draw_level:				;DONE reformat draw_level to use screen decompressor
         ldx #$00
 	jsr draw_screen
 	jsr find_enemies
-	rts
-;draw_level_loop:
-;	lda level_1,Y
-;	sta (SCR_PTR_LO,X)
-;        ; cmp #$37			;Note this will stop working if not facing up.
-;        ; beq player_found
-;	cmp #$3C
-;	beq enemy_found
-;	jmp inc_level_draw
-;enemy_found:				;DONE have to turn this into something that scans the decompressed screen
-;	jsr store_enemy
-;; 	jmp inc_level_draw
-;; player_found:
-;;         jsr store_player
-;inc_level_draw:
-;        iny
-;	inc SCR_PTR_LO
-;	bne draw_level_loop
-;
-;	inc SCR_PTR_HI
-;        iny
-;draw_level_loop_lower:
-;	lda level_1+$FF,Y
-;	sta (SCR_PTR_LO,X)
-;					;This section used to have player detection code not needed anymore
-;        iny
-;        inc SCR_PTR_LO
-;	bne draw_level_loop_lower
-;        rts
+	rts					;Removed old load level code instead we just use generic draw_screen.
 
 draw_curr_chars:
 	jsr player_to_screen
 	ldy #$00
-;	sta (SCR_PTR_LO),Y
 	lda PLAYER_SPRITE
 	sta (SCR_PTR_LO),Y
 draw_curr_enemies:
@@ -426,41 +397,7 @@ next_level_marker:
 	inx
 	lda level_0,X
 	sta LEVEL_ADDR_HI
-	sta LEVEL_LOWERADDR_HI
-	;jmp load_level
-;	cmp #<level_1
-;	bne level_2_exit
-;level_1_exit:
-;	lda level_1,X
-;	sta LEVEL_ADDR_LO
-;	sta LEVEL_LOWERADDR_LO
-;	inx
-;	lda level_1,X
-;	sta LEVEL_ADDR_HI
-;	sta LEVEL_LOWERADDR_HI
-;	; jsr level_loweraddr_store
-;	jmp load_level
-;level_2_exit:
-;	lda LEVEL_OFFSET
-;	bne level_2_south
-;	lda level_2,X
-;	sta LEVEL_ADDR_LO
-;	sta LEVEL_LOWERADDR_LO
-;	inx
-;	lda level_2,X
-;	sta LEVEL_ADDR_HI
-;	sta LEVEL_LOWERADDR_HI
-;	; jsr level_loweraddr_store
-;	jmp load_level
-;level_2_south:
-;	lda level_2,X
-;	sta LEVEL_ADDR_LO
-;	sta LEVEL_LOWERADDR_LO
-;	inx
-;	lda level_2,X
-;	sta LEVEL_ADDR_HI
-;	sta LEVEL_LOWERADDR_HI
-	; jsr level_loweraddr_store	;Something is happening here that breaks it if you jsr it for some reason
+	sta LEVEL_LOWERADDR_HI		;Removed old placeholder level transition for two levels as proof of concept
 
 load_level:				;DONE change location of self modifying code (smod) from draw_level_loop
 	lda LEVEL_ADDR_LO
@@ -528,7 +465,6 @@ check_left:
 	jsr check_collision_status	;Replaced common code with subroutine.
 	beq draw_left			;If it's 0 then keep going
 	inc SCR_PTR_LO			;If it's 1 then reset everything.
-	; jmp draw_left			;Draw it not moving. NOTE looks like unnecessary jump.
 draw_left:
 	jsr draw_sprite			;Common draw sprite code replaced with subroutine.
 end_move_left:
@@ -553,16 +489,12 @@ check_right:
 	jsr check_collision_status	;Common collision check replaced with subroutine.
 	beq draw_right
 	dec SCR_PTR_LO
-	; jmp draw_right
 draw_right:
 	jsr draw_sprite
 end_move_right:
         rts
 
 move_up:
-	; lda CUR_SPRITE
-	; cmp #$2E
-	; beq skip_blank_up
 	ldx #$00
 	lda #32				;Same as above, but we're subtracting by 22 to move up
 	sta (SCR_PTR_LO,X)
@@ -587,7 +519,6 @@ check_up:
         inc SCR_PTR_HI
 skip_inc_up:
 	sta SCR_PTR_LO
-	; jmp draw_up			;Draw it not moving
 draw_up:
 	jsr draw_sprite
 end_move_up:
@@ -789,11 +720,7 @@ remove_bullet_func:
 	sta bullet_dir,X
 	lda #32
 	ldy #$00
-	sta bullet_sprite,X
-	; lda bullet_low,X				;Placing the bullet load here was causing weird stuff to happen
-	; sta SCR_PTR_LO
-	; lda bullet_high,X
-	; sta SCR_PTR_HI
+	sta bullet_sprite,X				;Bullet load removed, doesn't make sense to load address then store at scr ptr. 
 	sta (SCR_PTR_LO),Y
 	rts
 
@@ -1028,10 +955,7 @@ remove_dead_enemies_loop:
 	lda #32
 	ldy #$00
 	sta enemy_sprite,X		;Remove the sprite from memory.
-	sta (SCR_PTR_LO),Y
-	; lda #$00
-	; sta enemy_low,X
-	; sta enemy_high,X
+	sta (SCR_PTR_LO),Y		;There was a section here for clearing the zero pg entries but it didn't do anything
 	dec num_enemies			;There might be an issue with out-of-order removal
 skip_remove_enemy:
 	inx
@@ -1271,67 +1195,6 @@ title_chr:
 ;DONE change this to an include to levels file.
 
 	include "levels.h"
-; level_0:
-; 	dc.b	<level_1, >level_1
-; 	dc.b	$00, $00
-; 	dc.b	$00, $00
-; 	dc.b	$00, $00
-;    	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3C, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $3F, $3F, $3F, $3F, $3F, $3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
-
-; level_1:
-; 	dc.b	<level_1, >level_1
-; 	dc.b	$00, $00
-; 	dc.b	<level_0, >level_0
-; 	dc.b	$00, $00
-;    	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $3C, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3C, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $3F, $3F, $3F, $3F, $3F, $3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $20, $3F
-; 	dc.b	$3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $2F, $2F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F, $3F
-
-;level_1_adj:
-;
-;level_2_adj:
 
 	org $1C00
 	
